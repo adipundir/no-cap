@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Clock, TriangleAlert, ArrowLeft, GraduationCap } from "lucide-react";
+import { DEFAULT_ECON_PARAMS, previewReturn } from "@/lib/economics";
 
 export default function FactDetail() {
   const params = useParams();
@@ -37,6 +38,10 @@ export default function FactDetail() {
   const [choice, setChoice] = useState<"cap" | "nocap" | null>(null);
   const [stake, setStake] = useState(5);
   const [context, setContext] = useState("");
+
+  const preview = choice
+    ? previewReturn(choice, Math.max(0, stake), tallies, DEFAULT_ECON_PARAMS, 1)
+    : null;
 
   return (
     <div className="min-h-screen">
@@ -81,6 +86,16 @@ export default function FactDetail() {
                   onChange={(e) => setStake(parseInt(e.target.value || "0", 10))}
                 />
               </div>
+              {preview && (
+                <div className="rounded-lg border bg-background p-3 text-sm">
+                  <div className="mb-2 font-medium">Your expected return</div>
+                  <div className="grid grid-cols-1 gap-1 md:grid-cols-3">
+                    <div className="flex items-center justify-between"><span className="text-muted-foreground">If your side wins</span><span>{preview.winReturn.toFixed(2)} PYUD</span></div>
+                    <div className="flex items-center justify-between"><span className="text-muted-foreground">Reward portion</span><span>{preview.winPool.toFixed(2)} PYUD</span></div>
+                    <div className="flex items-center justify-between"><span className="text-muted-foreground">If your side loses</span><span>{preview.loseReturn.toFixed(2)} PYUD</span></div>
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="mb-1 block text-sm font-medium">Context (required)</label>
                 <textarea
