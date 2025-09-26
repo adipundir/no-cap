@@ -19,7 +19,7 @@ export default function FactDetail() {
     status: "review" as "verified" | "review" | "flagged",
   }), [id]);
 
-  const [choice, setChoice] = useState<"cap" | "nocap" | "context" | null>(null);
+  const [choice, setChoice] = useState<"cap" | "nocap" | null>(null);
   const [stake, setStake] = useState(5);
   const [context, setContext] = useState("");
 
@@ -55,7 +55,6 @@ export default function FactDetail() {
                 <Button variant={choice === "nocap" ? "default" : "outline"} onClick={() => setChoice("nocap")}>
                   No Cap
                 </Button>
-                <Button variant={choice === "context" ? "default" : "outline"} onClick={() => setChoice("context")}>Needs Context</Button>
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">Stake (PYUD)</label>
@@ -102,15 +101,12 @@ export default function FactDetail() {
 
         <Card variant="module" className="p-0">
           <div className="module-header">
-            <h2 className="text-base font-semibold">Comments</h2>
+            <h2 className="text-base font-semibold">Contexts</h2>
           </div>
           <div className="module-content space-y-4">
             {["Solid evidence from EIP data.", "Need more sources."] .map((c, i) => (
               <div key={i} className="rounded-lg border bg-background px-3 py-2 text-sm">{c}</div>
             ))}
-          </div>
-          <div className="module-footer">
-            <input className="w-full rounded-lg border bg-background px-3 py-2 text-sm" placeholder="Add an anonymous comment (Walrus)." />
           </div>
         </Card>
       </div>
