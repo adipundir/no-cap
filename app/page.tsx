@@ -37,8 +37,8 @@ export default function Home() {
               Community-driven fact verification. Anonymous reviews. On-chain transparency.
             </p>
             
-            <Button size="lg" className="px-8 py-3 text-base md:text-lg">
-              Launch App
+            <Button size="lg" className="px-8 py-3 text-base md:text-lg" asChild>
+              <a href="/feed">Launch App</a>
             </Button>
 
             {/* Randomized floating chips */}
