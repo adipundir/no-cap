@@ -34,35 +34,7 @@ function StatusBadge({ status }: { status: Fact["status"] }) {
 export default function FeedPage() {
   return (
     <div className="min-h-screen">
-      <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-        {/* Top bar */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:underline">
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Link>
-            <h1 className="text-xl font-semibold">Community Feed</h1>
-          </div>
-          <div className="hidden items-center gap-2 md:flex">
-            <Badge variant="outline">Verified humans</Badge>
-            <Badge variant="outline">Anonymous reviews</Badge>
-            <Badge variant="outline">On-chain</Badge>
-            <Button asChild>
-              <Link href="/submit" className="inline-flex items-center gap-2"><Plus className="h-4 w-4" /> Create fact</Link>
-            </Button>
-          </div>
-        </div>
-
-        {/* Mobile create button */}
-        <div className="md:hidden sticky top-[52px] z-30 -mt-2">
-          <div className="mx-auto flex max-w-5xl justify-end px-4">
-            <Button asChild size="sm">
-              <Link href="/submit" className="inline-flex items-center gap-2"><Plus className="h-4 w-4" /> Create fact</Link>
-            </Button>
-          </div>
-        </div>
-
+      <div className="mx-auto max-w-5xl px-4 py-8">
         {/* Feed list */}
         <div className="space-y-4">
           {sampleFacts.map((f) => (
