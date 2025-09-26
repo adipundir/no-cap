@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shield, Clock, TriangleAlert, MessageSquare, ThumbsUp, ArrowLeft } from "lucide-react";
+import { Shield, Clock, TriangleAlert, MessageSquare, ThumbsUp, ArrowLeft, Plus, GraduationCap } from "lucide-react";
 
 type Fact = {
   id: string;
@@ -90,6 +90,9 @@ export default function FeedPage() {
             <Badge variant="outline">Verified humans</Badge>
             <Badge variant="outline">Anonymous reviews</Badge>
             <Badge variant="outline">On-chain</Badge>
+            <Button asChild>
+              <Link href="/submit" className="inline-flex items-center gap-2"><Plus className="h-4 w-4" /> Create fact</Link>
+            </Button>
           </div>
         </div>
 
@@ -116,12 +119,11 @@ export default function FeedPage() {
               <div className="module-footer">
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-4 text-muted-foreground">
-                    <span className="inline-flex items-center gap-1"><ThumbsUp className="h-4 w-4" /> {f.votes}</span>
+                    <span className="inline-flex items-center gap-1"><GraduationCap className="h-4 w-4" /> {f.votes}</span>
                     <span className="inline-flex items-center gap-1"><MessageSquare className="h-4 w-4" /> {f.comments}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">Comment</Button>
-                    <Button size="sm">Vote</Button>
+                    <Button size="sm" asChild><Link href={`/facts/${f.id}`}>Cap / No Cap</Link></Button>
                   </div>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import TextPressure from "@/components/TextPressure";
 import CardNav from "@/components/CardNav";
-import { Shield, Vote, Users } from "lucide-react";
+import { Shield, Users, GraduationCap } from "lucide-react";
 import { FloatingChips } from "@/components/floating-chips";
 
 export default function Home() {
@@ -45,7 +45,7 @@ export default function Home() {
             <FloatingChips
               items={[
                 { label: "On-chain", icon: <Shield className="h-4 w-4" /> },
-                { label: "Anonymous votes", icon: <Vote className="h-4 w-4" /> },
+                { label: "Anonymous caps", icon: <GraduationCap className="h-4 w-4" /> },
                 { label: "Rewards", icon: <Users className="h-4 w-4" /> },
                 { label: "Sybil-resistant" },
                 { label: "Community-led" },
