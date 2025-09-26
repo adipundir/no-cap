@@ -9,9 +9,15 @@ export default function SubmitPage() {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [stake, setStake] = useState(10);
+  const [durationHrs, setDurationHrs] = useState(48); // fact lifeline in hours (28-60)
 
   // No real submission yet; this is a visual-only stub
-  const isValid = title.trim().length > 10 && summary.trim().length > 20 && stake > 0;
+  const isValid =
+    title.trim().length > 10 &&
+    summary.trim().length > 20 &&
+    stake > 0 &&
+    durationHrs >= 28 &&
+    durationHrs <= 60;
 
   return (
     <div className="min-h-screen">
@@ -55,6 +61,26 @@ export default function SubmitPage() {
               </div>
               <div className="md:col-span-2 text-sm text-muted-foreground">
                 Your stake helps prevent spam. If the outcome is True, you earn back stake + rewards. If False, stake is redistributed to correct reviewers.
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="md:col-span-1">
+                <label className="mb-1 block text-sm font-medium">Fact lifeline (hours)</label>
+                <input
+                  type="range"
+                  min={28}
+                  max={60}
+                  value={durationHrs}
+                  onChange={(e) => setDurationHrs(parseInt(e.target.value, 10))}
+                  className="w-full"
+                />
+                <div className="mt-1 text-xs text-muted-foreground">{durationHrs}h</div>
+              </div>
+              <div className="md:col-span-2 text-sm text-muted-foreground">
+                Voting window the fact remains open. Minimum 28h, maximum 60h.
+                {" "}
+                <span className="block mt-1">Ends approximately: {new Date(Date.now() + durationHrs * 3600 * 1000).toLocaleString()}</span>
               </div>
             </div>
           </div>
