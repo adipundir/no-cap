@@ -100,6 +100,10 @@
   background-size: cover, cover, 256px 256px;
 }
 
+/* Mobile-safe containers */
+.container-xs { max-width: 640px; margin-left: auto; margin-right: auto; }
+.container-sm { max-width: 768px; margin-left: auto; margin-right: auto; }
+
 .grain-card:before {
   content: "";
   position: absolute;
