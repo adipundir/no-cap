@@ -3,53 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Shield, Clock, TriangleAlert, MessageSquare, ThumbsUp, ArrowLeft, Plus, GraduationCap } from "lucide-react";
+import { SAMPLE_FACTS } from "@/components/data/placeholders";
 
-type Fact = {
-  id: string;
-  title: string;
-  summary: string;
-  status: "verified" | "review" | "flagged";
-  votes: number;
-  comments: number;
-  author: string; // can be anon handle
-  updated: string;
-};
-
-const sampleFacts: Fact[] = [
-  {
-    id: "1",
-    title: "Saturn's moon Enceladus contains hydrothermal vents in its subsurface ocean",
-    summary:
-      "Cassini data suggests warm hydrothermal activity, consistent with silica nanoparticles found in plumes.",
-    status: "verified",
-    votes: 1243,
-    comments: 89,
-    author: "anon-4f8c",
-    updated: "2h ago",
-  },
-  {
-    id: "2",
-    title: "A new exoplanet has been found in Alpha Centauri",
-    summary:
-      "A circulating blog post claims a discovery, but no peer-reviewed source currently corroborates it.",
-    status: "review",
-    votes: 312,
-    comments: 45,
-    author: "anon-a21e",
-    updated: "6h ago",
-  },
-  {
-    id: "3",
-    title: "Photosynthesis can operate efficiently under starlight intensity on exoplanets",
-    summary:
-      "Claim under dispute; dependent on stellar spectrum and atmospheric composition assumptions.",
-    status: "flagged",
-    votes: 158,
-    comments: 23,
-    author: "anon-9921",
-    updated: "1d ago",
-  },
-];
+// Using centralized placeholders to ease real-data swap later
+const sampleFacts = SAMPLE_FACTS;
 
 function StatusBadge({ status }: { status: Fact["status"] }) {
   if (status === "verified") {

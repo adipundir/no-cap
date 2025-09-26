@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Clock, TriangleAlert, ArrowLeft, GraduationCap } from "lucide-react";
 import { DEFAULT_ECON_PARAMS, previewReturn } from "@/lib/economics";
+import { SAMPLE_TALLIES, SAMPLE_CONTEXTS } from "@/components/data/placeholders";
 
 export default function FactDetail() {
   const params = useParams();
@@ -21,13 +22,7 @@ export default function FactDetail() {
   }), [id]);
 
   // demo tallies for UI only
-  const tallies = useMemo(() => ({
-    capVotes: 40,
-    noCapVotes: 10,
-    capStake: 320, // PYUD (voters)
-    noCapStake: 80, // PYUD (voters)
-    posterStake: 20, // PYUD (fact poster)
-  }), []);
+  const tallies = useMemo(() => SAMPLE_TALLIES, []);
   const totalVotes = tallies.capVotes + tallies.noCapVotes;
   const votingStake = tallies.capStake + tallies.noCapStake;
   const totalStake = votingStake + tallies.posterStake;
@@ -161,8 +156,8 @@ export default function FactDetail() {
             <h2 className="text-base font-semibold">Contexts</h2>
           </div>
           <div className="module-content space-y-4">
-            {["Solid evidence from EIP data.", "Need more sources."] .map((c, i) => (
-              <div key={i} className="rounded-lg border bg-background px-3 py-2 text-sm">{c}</div>
+            {SAMPLE_CONTEXTS.map((c) => (
+              <div key={c.id} className="rounded-lg border bg-background px-3 py-2 text-sm">{c.text}</div>
             ))}
           </div>
         </Card>
