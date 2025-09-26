@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { WorldAppStatus } from '@/components/world/world-app-status'
-import { UnifiedWallet } from '@/components/world/unified-wallet'
+import { NativeWorldWallet } from '@/components/world/native-world-wallet'
 import { WorldIDVerification } from '@/components/world/world-id-verification'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -94,7 +94,7 @@ export default function WorldMiniApp() {
               {isWalletConnected && <CheckCircle className="h-5 w-5 text-green-500" />}
             </div>
             
-            <UnifiedWallet
+            <NativeWorldWallet
               onAuthSuccess={handleWalletAuthSuccess}
               onAuthError={handleWalletAuthError}
             />

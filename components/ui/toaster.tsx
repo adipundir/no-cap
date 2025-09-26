@@ -15,7 +15,11 @@ export function Toaster({ toasts, onRemove }: ToasterProps) {
           className="animate-in slide-in-from-top-full duration-300 sm:slide-in-from-bottom-full"
         >
           <Toast
-            {...toast}
+            id={toast.id}
+            title={toast.title}
+            description={toast.description}
+            type={toast.type}
+            duration={toast.duration}
             onClose={() => onRemove(toast.id)}
           />
         </div>

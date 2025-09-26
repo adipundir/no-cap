@@ -6,8 +6,6 @@ import { MiniKit, WalletAuthInput } from '@worldcoin/minikit-js'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
-import { useEnvironmentDetection } from '@/components/world/environment-detector'
-import { QRWalletConnect } from '@/components/world/qr-wallet-connect'
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -30,9 +28,7 @@ import {
   LogOut,
   Loader2,
   AlertCircle,
-  Coins,
-  QrCode,
-  X
+  Coins
 } from 'lucide-react'
 
 export function Navbar() {
@@ -40,16 +36,7 @@ export function Navbar() {
   const [walletAddress, setWalletAddress] = useState<string>('')
   const [isConnecting, setIsConnecting] = useState(false)
   const [pyusdBalance, setPyusdBalance] = useState<string>('0')
-  const [showQRModal, setShowQRModal] = useState(false)
   const { toast } = useToast()
-  const environment = useEnvironmentDetection()
-
-  // Check wallet connection status on mount
-  useEffect(() => {
-    // Note: MiniKit doesn't expose walletAddress directly
-    // Wallet connection state should be managed through authentication flow
-    // This effect can be used for other initialization if needed
-  }, [])
 
   const fetchPyusdBalance = async (address: string) => {
     try {
@@ -64,100 +51,84 @@ export function Navbar() {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
   }
 
+  // Check wallet connection status on mount
+  useEffect(() => {
+    // World App native wallet doesn't persist connection state
+    // Connection is managed through walletAuth flow
+  }, [])
+
   const handleWalletConnect = useCallback(async () => {
-    // Check environment and use appropriate connection method
-    if (environment.isWorldApp) {
-      // Native World App connection
-      if (!MiniKit.isInstalled()) {
+    if (!MiniKit.isInstalled()) {
+      toast({
+        type: 'error',
+        title: 'World App Required',
+        description: 'Please open this app in World App to connect your wallet.',
+      })
+      return
+    }
+
+    setIsConnecting(true)
+
+    try {
+      const nonce = generateNonce()
+      
+      const walletAuthPayload: WalletAuthInput = {
+        nonce,
+        statement: 'Connect to NOCAP for community-driven fact verification on Ethereum Sepolia',
+        expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
+        notBefore: new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
+        requestId: Date.now().toString()
+      }
+
+      const { finalPayload } = await MiniKit.commandsAsync.walletAuth(walletAuthPayload)
+
+      if (finalPayload.status === 'error') {
         toast({
           type: 'error',
-          title: 'World App Required',
-          description: 'Please open this app in World App to connect your wallet.',
+          title: 'Connection Failed',
+          description: finalPayload.error_code || 'Failed to connect wallet. Please try again.',
         })
         return
       }
 
-      setIsConnecting(true)
-
-      try {
-        const nonce = generateNonce()
-        
-        const walletAuthPayload: WalletAuthInput = {
-          nonce,
-          statement: 'Connect to NOCAP for community-driven fact verification with PYUSD rewards',
-          expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
-          notBefore: new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
-          requestId: Date.now().toString()
-        }
-
-        const { finalPayload } = await MiniKit.commandsAsync.walletAuth(walletAuthPayload)
-
-        if (finalPayload.status === 'error') {
-          toast({
-            type: 'error',
-            title: 'Connection Failed',
-            description: finalPayload.error_code || 'Failed to connect wallet. Please try again.',
-          })
-          return
-        }
-
-        const { address, signature, message } = finalPayload
-        setWalletAddress(address)
-        setIsWalletConnected(true)
-        await fetchPyusdBalance(address)
-        
-        toast({
-          type: 'success',
-          title: 'Wallet Connected',
-          description: `Successfully connected ${address.slice(0, 6)}...${address.slice(-4)}`,
-        })
-        
-        console.log('World App wallet connected:', { address, signature, message })
-      } catch (error) {
-        console.error('Wallet auth error:', error)
-        toast({
-          type: 'error',
-          title: 'Connection Error',
-          description: 'An unexpected error occurred while connecting your wallet.',
-        })
-      } finally {
-        setIsConnecting(false)
-      }
-    } else {
-      // Web browser - show QR modal
-      setShowQRModal(true)
+      const { address, signature, message } = finalPayload
+      setWalletAddress(address)
+      setIsWalletConnected(true)
+      await fetchPyusdBalance(address)
+      
+      toast({
+        type: 'success',
+        title: 'Wallet Connected',
+        description: `Successfully connected ${address.slice(0, 6)}...${address.slice(-4)}`,
+      })
+      
+      console.log('World App wallet connected:', { address, signature, message })
+    } catch (error) {
+      console.error('Wallet auth error:', error)
+      toast({
+        type: 'error',
+        title: 'Connection Error',
+        description: 'An unexpected error occurred while connecting your wallet.',
+      })
+    } finally {
+      setIsConnecting(false)
     }
-  }, [environment.isWorldApp, toast])
+  }, [toast, fetchPyusdBalance])
 
-  const handleDisconnect = () => {
+
+
+  const handleDisconnect = useCallback(() => {
     setWalletAddress('')
     setIsWalletConnected(false)
     setPyusdBalance('0')
-    setShowQRModal(false)
-    
-    // Clear QR wallet connection if exists
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('qr-wallet-address')
-    }
     
     toast({
       type: 'info',
       title: 'Wallet Disconnected',
       description: 'Your wallet has been disconnected successfully.',
     })
-  }
+  }, [toast])
 
-  const handleQRAuthSuccess = (address: string, signature: string) => {
-    setWalletAddress(address)
-    setIsWalletConnected(true)
-    setShowQRModal(false)
-    fetchPyusdBalance(address)
-  }
-
-  const handleQRAuthError = (error: any) => {
-    console.error('QR auth error:', error)
-    setShowQRModal(false)
-  }
 
   const formatAddress = (address: string) => {
     if (!address) return ''
@@ -236,6 +207,9 @@ export function Navbar() {
                             <p className="text-xs font-mono text-green-700 dark:text-green-300">
                               {walletAddress}
                             </p>
+                            <p className="text-xs text-green-600 dark:text-green-400">
+                              Ethereum Sepolia Testnet
+                            </p>
                           </div>
                         </div>
 
@@ -276,14 +250,8 @@ export function Navbar() {
                     </>
                   ) : (
                     <>
-                      {environment.isWorldApp ? (
-                        <Wallet className="h-4 w-4" />
-                      ) : (
-                        <QrCode className="h-4 w-4" />
-                      )}
-                      <span>
-                        {environment.isWorldApp ? 'Connect Wallet' : 'Scan QR Code'}
-                      </span>
+                      <Wallet className="h-4 w-4" />
+                      <span>Connect Wallet</span>
                     </>
                   )}
                 </Button>
@@ -348,6 +316,9 @@ export function Navbar() {
                                 <p className="text-xs font-mono text-green-700 dark:text-green-300">
                                   {formatAddress(walletAddress)}
                                 </p>
+                                <p className="text-xs text-green-600 dark:text-green-400">
+                                  Ethereum Sepolia Testnet
+                                </p>
                               </div>
                             </div>
 
@@ -392,12 +363,8 @@ export function Navbar() {
                               </>
                             ) : (
                               <>
-                                {environment.isWorldApp ? (
-                                  <Wallet className="h-4 w-4" />
-                                ) : (
-                                  <QrCode className="h-4 w-4" />
-                                )}
-                                {environment.isWorldApp ? 'Connect World App Wallet' : 'Scan QR Code'}
+                                <Wallet className="h-4 w-4" />
+                                Connect World App Wallet
                               </>
                             )}
                           </Button>
@@ -412,30 +379,6 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* QR Code Modal for Web Browsers */}
-      {showQRModal && !environment.isWorldApp && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold">Connect with World App</h2>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowQRModal(false)}
-                className="h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="p-4">
-              <QRWalletConnect 
-                onAuthSuccess={handleQRAuthSuccess}
-                onAuthError={handleQRAuthError}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </nav>
   )
 }
