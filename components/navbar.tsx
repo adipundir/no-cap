@@ -22,8 +22,7 @@ import {
   Home, 
   FileText, 
   BarChart3, 
-  Plus, 
-  Globe,
+  Plus,
   User,
   LogOut,
   Loader2,
@@ -139,7 +138,6 @@ export function Navbar() {
     { href: '/feed', label: 'Feed', icon: FileText },
     { href: '/submit', label: 'Submit', icon: Plus },
     { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-    { href: '/world', label: 'World App', icon: Globe },
   ]
 
   return (
