@@ -11,14 +11,14 @@ export function FloatingChips({ items, className }: { items: ChipItem[]; classNa
   const positions = React.useMemo(() => {
     // Generate random but stable positions on mount with spacing constraints
     const placed: { top: number; left: number; delay: number; duration: number }[] = [];
-    const minDistance = 14; // in percentage points (euclidean) to keep chips apart
+    const minDistance = 28; // much wider spacing between chips
 
     const inSafeBands = () => {
-      // two vertical bands away from center content
-      // 18%-34% (upper mid) or 66%-84% (lower mid)
+      // two vertical bands far from center content
+      // 8%-24% (upper) or 76%-92% (lower)
       const useTopBand = Math.random() < 0.5;
-      const top = (useTopBand ? 18 : 66) + Math.random() * 16; // 18-34 or 66-82
-      const left = 12 + Math.random() * 76; // 12-88
+      const top = (useTopBand ? 8 : 76) + Math.random() * 16; // 8-24 or 76-92
+      const left = 10 + Math.random() * 80; // 10-90
       return { top, left };
     };
 
