@@ -19,6 +19,21 @@ export default function FactDetail() {
     status: "review" as "verified" | "review" | "flagged",
   }), [id]);
 
+  // demo tallies for UI only
+  const tallies = useMemo(() => ({
+    capVotes: 40,
+    noCapVotes: 10,
+    capStake: 320, // PYUD (voters)
+    noCapStake: 80, // PYUD (voters)
+    posterStake: 20, // PYUD (fact poster)
+  }), []);
+  const totalVotes = tallies.capVotes + tallies.noCapVotes;
+  const votingStake = tallies.capStake + tallies.noCapStake;
+  const totalStake = votingStake + tallies.posterStake;
+  const capPct = Math.round((tallies.capVotes / Math.max(1, totalVotes)) * 100);
+  const noCapPct = 100 - capPct;
+  const leader = tallies.capVotes >= tallies.noCapVotes ? "Caps" : "No Caps";
+
   const [choice, setChoice] = useState<"cap" | "nocap" | null>(null);
   const [stake, setStake] = useState(5);
   const [context, setContext] = useState("");
@@ -86,7 +101,7 @@ export default function FactDetail() {
             <div className="module-header">
               <h2 className="text-base font-semibold">Status</h2>
             </div>
-            <div className="module-content space-y-3 text-sm">
+            <div className="module-content space-y-4 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Window</span>
                 <span>48h</span>
@@ -94,6 +109,33 @@ export default function FactDetail() {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Outcome</span>
                 <span>Pending</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Total stake</span>
+                <span>{totalStake} PYUD</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Poster stake</span>
+                <span>{tallies.posterStake} PYUD</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Voting stake</span>
+                <span>{votingStake} PYUD</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Caps</span>
+                <span>{tallies.capVotes} ({capPct}%) · {tallies.capStake} PYUD</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">No Caps</span>
+                <span>{tallies.noCapVotes} ({noCapPct}%) · {tallies.noCapStake} PYUD</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full border">
+                <div className="h-full bg-foreground/80" style={{ width: `${capPct}%` }} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Leader</span>
+                <span>{leader}</span>
               </div>
             </div>
           </Card>
