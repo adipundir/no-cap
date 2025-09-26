@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Shield, Clock, TriangleAlert, MessageSquare, ThumbsUp, ArrowLeft, Plus, GraduationCap } from "lucide-react";
 import { SAMPLE_FACTS } from "@/components/data/placeholders";
+import type { Fact } from "@/types/fact";
 
 // Using centralized placeholders to ease real-data swap later
 const sampleFacts = SAMPLE_FACTS;

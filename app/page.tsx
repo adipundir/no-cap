@@ -1,21 +1,13 @@
 import { Button } from "@/components/ui/button";
 import TextPressure from "@/components/TextPressure";
-import CardNav from "@/components/CardNav";
 import { Shield, Users, GraduationCap } from "lucide-react";
 import { FloatingChips } from "@/components/floating-chips";
 
 export default function Home() {
   return (
     <div className="page-bg min-h-screen flex flex-col">
-      <CardNav
-        items={[
-          { label: "About", links: [ { label: "Company" }, { label: "Careers" } ] },
-          { label: "Projects", links: [ { label: "Featured" }, { label: "Case Studies" } ] },
-          { label: "Contact", links: [ { label: "Email" }, { label: "Twitter" }, { label: "LinkedIn" } ] }
-        ]}
-      />
       {/* HERO SECTION */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 pt-10 md:pt-14">
+      <main className="flex-1 flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-4xl">
           <div style={{ position: 'relative', height: '320px', marginBottom: '2rem' }}>
             <TextPressure

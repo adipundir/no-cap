@@ -2,25 +2,21 @@
 
 import { useState } from 'react'
 import { WorldAppStatus } from '@/components/world/world-app-status'
-import { MultiChainWallet } from '@/components/world/multi-chain-wallet'
+import { NativeWorldWallet } from '@/components/world/native-world-wallet'
 import { WorldIDVerification } from '@/components/world/world-id-verification'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { VerificationLevel } from '@worldcoin/minikit-js'
 import { Shield, Wallet, Globe, Zap, Users, Lock, CheckCircle } from 'lucide-react'
 
-type SupportedChain = 'ethereum-sepolia' | 'solana-devnet'
-
 export default function WorldMiniApp() {
   const [isWalletConnected, setIsWalletConnected] = useState(false)
   const [walletAddress, setWalletAddress] = useState<string>('')
-  const [selectedChain, setSelectedChain] = useState<SupportedChain>('solana-devnet')
   const [verificationResult, setVerificationResult] = useState<any>(null)
 
-  const handleWalletAuthSuccess = (address: string, signature: string, chain: SupportedChain) => {
-    console.log('Multi-chain wallet authenticated:', { address, signature, chain })
+  const handleWalletAuthSuccess = (address: string, signature: string) => {
+    console.log('World App wallet authenticated:', { address, signature })
     setWalletAddress(address)
-    setSelectedChain(chain)
     setIsWalletConnected(true)
   }
 
@@ -63,9 +59,9 @@ export default function WorldMiniApp() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="p-6 text-center">
             <Wallet className="h-8 w-8 text-blue-500 mx-auto mb-3" />
-            <h3 className="font-semibold mb-2">PYUSD Wallet</h3>
+            <h3 className="font-semibold mb-2">World App Wallet</h3>
             <p className="text-sm text-muted-foreground">
-              Connect to Ethereum or Solana testnets with PYUSD support
+              Native wallet with gas-sponsored transactions and PYUSD support
             </p>
           </Card>
           
@@ -94,11 +90,11 @@ export default function WorldMiniApp() {
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-semibold text-sm">
                 1
               </div>
-              <h2 className="text-xl font-semibold">Connect PYUSD Wallet</h2>
+              <h2 className="text-xl font-semibold">Connect World App Wallet</h2>
               {isWalletConnected && <CheckCircle className="h-5 w-5 text-green-500" />}
             </div>
             
-            <MultiChainWallet
+            <NativeWorldWallet
               onAuthSuccess={handleWalletAuthSuccess}
               onAuthError={handleWalletAuthError}
             />
@@ -192,13 +188,13 @@ export default function WorldMiniApp() {
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                      {selectedChain === 'solana-devnet' ? '◎' : '⟠'} {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                      🌍 {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
                     </Badge>
                     <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                       World ID: Verified
                     </Badge>
                     <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                      PYUSD Ready
+                      Gas Sponsored
                     </Badge>
                   </div>
                 </div>

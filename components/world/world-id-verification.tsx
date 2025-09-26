@@ -5,6 +5,7 @@ import { MiniKit, VerifyCommandInput, VerificationLevel, ISuccessResult } from '
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { useToast } from '@/hooks/use-toast'
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 
 interface WorldIDVerificationProps {
@@ -24,18 +25,21 @@ export function WorldIDVerification({
 }: WorldIDVerificationProps) {
   const [isVerifying, setIsVerifying] = useState(false)
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'success' | 'error'>('idle')
-  const [errorMessage, setErrorMessage] = useState<string>('')
+  const { toast } = useToast()
 
   const handleVerify = useCallback(async () => {
     if (!MiniKit.isInstalled()) {
-      setErrorMessage('MiniKit is not installed. Please open this app in World App.')
+      toast({
+        type: 'error',
+        title: 'World App Required',
+        description: 'Please open this app in World App to verify your identity.',
+      })
       setVerificationStatus('error')
       return
     }
 
     setIsVerifying(true)
     setVerificationStatus('idle')
-    setErrorMessage('')
 
     try {
       const verifyPayload: VerifyCommandInput = {
@@ -47,14 +51,17 @@ export function WorldIDVerification({
       const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload)
 
       if (finalPayload.status === 'error') {
-        setErrorMessage(finalPayload.error_code || 'Verification failed')
+        toast({
+          type: 'error',
+          title: 'Verification Failed',
+          description: finalPayload.error_code || 'World ID verification failed. Please try again.',
+        })
         setVerificationStatus('error')
         onError?.(finalPayload)
         return
       }
 
       // World ID verification successful - ready for on-chain verification
-      // The proof can now be used in your smart contract for on-chain verification
       console.log('World ID proof received:', {
         nullifier_hash: (finalPayload as ISuccessResult).nullifier_hash,
         merkle_root: (finalPayload as ISuccessResult).merkle_root,
@@ -63,16 +70,25 @@ export function WorldIDVerification({
       })
 
       setVerificationStatus('success')
+      toast({
+        type: 'success',
+        title: 'Identity Verified',
+        description: 'Your World ID has been successfully verified and proof generated!',
+      })
       onSuccess?.(finalPayload as ISuccessResult)
     } catch (error) {
       console.error('Verification error:', error)
-      setErrorMessage('An unexpected error occurred')
+      toast({
+        type: 'error',
+        title: 'Verification Error',
+        description: 'An unexpected error occurred during verification.',
+      })
       setVerificationStatus('error')
       onError?.(error)
     } finally {
       setIsVerifying(false)
     }
-  }, [action, signal, verificationLevel, onSuccess, onError])
+  }, [action, signal, verificationLevel, onSuccess, onError, toast])
 
   const getStatusIcon = () => {
     switch (verificationStatus) {
@@ -115,12 +131,6 @@ export function WorldIDVerification({
           </div>
         </div>
 
-        {verificationStatus === 'error' && errorMessage && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-md">
-            <AlertCircle className="h-4 w-4 text-red-500" />
-            <p className="text-sm text-red-700 dark:text-red-300">{errorMessage}</p>
-          </div>
-        )}
 
         {verificationStatus === 'success' && (
           <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-md">
