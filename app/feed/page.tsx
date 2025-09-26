@@ -53,6 +53,15 @@ export default function FeedPage() {
           </div>
         </div>
 
+        {/* Mobile create button */}
+        <div className="md:hidden sticky top-[52px] z-30 -mt-2">
+          <div className="mx-auto flex max-w-5xl justify-end px-4">
+            <Button asChild size="sm">
+              <Link href="/submit" className="inline-flex items-center gap-2"><Plus className="h-4 w-4" /> Create fact</Link>
+            </Button>
+          </div>
+        </div>
+
         {/* Feed list */}
         <div className="space-y-4">
           {sampleFacts.map((f) => (
