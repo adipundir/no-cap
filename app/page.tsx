@@ -3,9 +3,9 @@ import TextPressure from "@/components/TextPressure";
 
 export default function Home() {
   return (
-    <div className="page-bg min-h-screen flex flex-col items-center justify-center">
+    <div className="page-bg min-h-screen flex flex-col select-none" style={{ userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
       {/* HERO SECTION */}
-      <main className="flex flex-col items-center justify-center px-4">
+      <main className="flex-1 flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-4xl text-center">
           <div style={{ position: 'relative', height: '320px', marginBottom: '2rem' }}>
             <TextPressure
@@ -30,12 +30,30 @@ export default function Home() {
             <Button size="lg" className="px-8 py-3 text-base md:text-lg" asChild>
               <a href="/feed">Launch App</a>
             </Button>
+
+            {/* Minimal stats to fill space */}
+            <div className="mt-16 flex items-center justify-center space-x-8 text-xs text-muted-foreground">
+              <div className="text-center">
+                <div className="font-mono">24/7</div>
+                <div className="mt-1">Verification</div>
+              </div>
+              <div className="w-px h-8 bg-border"></div>
+              <div className="text-center">
+                <div className="font-mono">100%</div>
+                <div className="mt-1">Anonymous</div>
+              </div>
+              <div className="w-px h-8 bg-border"></div>
+              <div className="text-center">
+                <div className="font-mono">∞</div>
+                <div className="mt-1">Transparency</div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
 
       {/* FOOTER */}
-      <footer className="absolute bottom-0 w-full border-t border-border py-8 text-center text-sm text-muted-foreground">
+      <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
         <div className="mx-auto max-w-7xl px-4">
           © {new Date().getFullYear()} NOCAP — Verified humans, anonymous reviews
         </div>
