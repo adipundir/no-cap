@@ -167,7 +167,7 @@ export default function SubmitPage() {
                           <div className="md:col-span-2 text-sm text-muted-foreground">
                             <p className="mb-2">🎯 <strong>Why stake ETH?</strong></p>
                             <ul className="text-xs space-y-1">
-                              <li>• Earn rewards if community votes CAP (fact is true)</li>
+                              <li>• Earn rewards if community votes NO CAP (fact is true)</li>
                               <li>• Show confidence in your submission</li>
                               <li>• Help prevent spam and low-quality content</li>
                               <li>• Voting period: 10 minutes for testing</li>
@@ -188,7 +188,7 @@ export default function SubmitPage() {
 
             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                ⏱️ <strong>Voting Period:</strong> 10 minutes (for testing). Community will vote CAP or NO CAP on your fact.
+                ⏱️ <strong>Voting Period:</strong> 10 minutes (for testing). Community will vote CAP (false) or NO CAP (true) on your fact.
               </p>
             </div>
           </div>
