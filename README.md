@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NOCAP 🚀
 
-## Getting Started
+**Community-driven fact verification. Anonymous reviews. On-chain transparency.**
 
-First, run the development server:
+NOCAP is a platform where people can submit claims, and the community votes on whether they're true or false. Think of it as a fact-checking app powered by real people and secured by blockchain technology.
+
+## What does NOCAP do?
+
+### 📝 **Submit Facts**
+- Share any claim or statement you want verified
+- Add sources to back up your claim
+- Optionally stake ETH to show confidence in your fact
+
+### 🗳️ **Community Voting**
+- Vote **CAP** if you think the claim is **false**
+- Vote **NO CAP** if you think the claim is **true**
+- Stake ETH on your vote to earn rewards if you're right
+
+### 💰 **Earn Rewards**
+- Win ETH when you vote correctly
+- Rewards are distributed proportionally based on your stake
+- The more confident you are, the more you can earn
+
+### 🔒 **Human-Only**
+- Only verified humans can participate
+- Anonymous voting protects your privacy
+- All votes are recorded transparently on the blockchain
+
+## How it works
+
+1. **Someone submits a fact** → "The Earth is round"
+2. **Community votes for 10 minutes** → CAP (false) or NO CAP (true)
+3. **Majority wins** → In this case, NO CAP wins
+4. **Rewards distributed** → Everyone who voted NO CAP gets paid
+
+## For Developers 👨‍💻
+
+Want to integrate NOCAP's verified facts into your app? Use our SDK:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install nocap-sdk
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**📦 [NOCAP SDK on NPM](https://www.npmjs.com/package/nocap-sdk)**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The SDK gives you access to:
+- All verified facts and their voting results
+- Real-time fact verification status
+- Community voting data
+- Perfect for AI training, fact-checking bots, or knowledge bases
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```javascript
+import { NOCAPClient } from 'nocap-sdk'
 
-## Learn More
+const client = new NOCAPClient()
+const facts = await client.getFacts({ status: 'verified' })
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Why NOCAP?
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **🎯 Accurate**: Community wisdom beats individual bias
+- **💰 Incentivized**: People earn money for being right
+- **🔐 Secure**: Blockchain ensures transparency and immutability
+- **👥 Anonymous**: Vote without revealing your identity
+- **🤖 AI-Ready**: Clean, structured data perfect for AI systems
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Get Started
 
-## Deploy on Vercel
+1. **Visit the app**: [Launch NOCAP](https://nocap.app)
+2. **Connect your wallet**: Use World App for seamless experience
+3. **Start voting**: Help verify facts and earn rewards
+4. **Submit facts**: Share claims you want the community to verify
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Frontend**: Next.js, React, TailwindCSS
+- **Blockchain**: World Chain (Ethereum-compatible)
+- **Storage**: Walrus (decentralized storage)
+- **Wallet**: World App integration
+- **API**: 1inch Balance API integration
+
+---
+
+**Built for the community, powered by truth.** 🌍
+
+*NOCAP is part of the World Chain ecosystem, ensuring human-verified, decentralized fact-checking for the future of information.*
