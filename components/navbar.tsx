@@ -134,16 +134,25 @@ export default function Navbar() {
 
     setIsConnecting(true)
     try {
-      // Generate a secure nonce
-      const nonce = Math.floor(Math.random() * 1000000).toString()
-      console.log('🎲 Generated nonce:', nonce)
-      toast('Generated secure nonce...')
+      // Get secure nonce from server
+      console.log('🔐 Fetching secure nonce from server...')
+      toast('Fetching secure nonce...')
+      
+      const nonceResponse = await fetch('/api/nonce')
+      if (!nonceResponse.ok) {
+        throw new Error('Failed to fetch nonce from server')
+      }
+      
+      const { nonce } = await nonceResponse.json()
+      console.log('🎲 Received nonce from server:', nonce)
+      toast('Nonce received, preparing authentication...')
       
       const walletAuthPayload: WalletAuthInput = {
         nonce,
         statement: 'Connect to NOCAP for community-driven fact verification on World Chain',
         expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
         notBefore: new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
+        requestId: Date.now().toString(), // Add requestId as recommended
       }
 
       console.log('📝 Wallet auth payload:', walletAuthPayload)
@@ -159,9 +168,11 @@ export default function Navbar() {
       const authPromise = MiniKit.commandsAsync.walletAuth(walletAuthPayload)
       
       toast('Waiting for World App response...')
-      const { finalPayload } = await Promise.race([authPromise, timeoutPromise]) as any
+      // Properly destructure both commandPayload and finalPayload as per docs
+      const { commandPayload, finalPayload } = await Promise.race([authPromise, timeoutPromise]) as any
       
-      console.log('📦 Received payload:', finalPayload)
+      console.log('📦 Received commandPayload:', commandPayload)
+      console.log('📦 Received finalPayload:', finalPayload)
 
       if (finalPayload.status === 'error') {
         console.error('❌ Wallet auth error:', finalPayload.error_code)
