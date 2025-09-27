@@ -19,9 +19,7 @@ export async function fetchUserBalances(walletAddress: string): Promise<UserBala
     const oneInchService = createOneInchBalanceService();
     
     if (oneInchService) {
-      // Use 1inch API for hackathon track requirements
-      console.log('🏆 Using 1inch API for hackathon track');
-      
+      // Use 1inch API for enhanced balance data
       const [ethBalance, wldBalance] = await Promise.all([
         oneInchService.getETHBalance(walletAddress, CHAIN_IDS.ETHEREUM),
         oneInchService.getWLDBalance(walletAddress, CHAIN_IDS.ETHEREUM),
@@ -35,7 +33,6 @@ export async function fetchUserBalances(walletAddress: string): Promise<UserBala
       };
     } else {
       // Fallback to World Chain RPC
-      console.log('⚠️ Falling back to World Chain RPC - add ONEINCH_API_KEY for hackathon features');
       return await fetchBalancesViaWorldChain(walletAddress);
     }
 
