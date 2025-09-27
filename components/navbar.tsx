@@ -223,6 +223,7 @@ export function Navbar() {
                           </div>
                         </div>
 
+
                         <Button 
                           variant="outline" 
                           onClick={handleDisconnect}

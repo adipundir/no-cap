@@ -93,5 +93,3 @@ export default function SubmitPage() {
     </div>
   );
 }
-
-

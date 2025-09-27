@@ -56,7 +56,7 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
       
       const walletAuthPayload: WalletAuthInput = {
         nonce,
-        statement: 'Connect to NOCAP for community-driven fact verification with PYUSD rewards',
+        statement: 'Connect to NOCAP for community-driven fact verification on Ethereum Sepolia',
         expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days
         notBefore: new Date(new Date().getTime() - 24 * 60 * 60 * 1000), // 24 hours ago
         requestId: Date.now().toString()
@@ -125,10 +125,10 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
         </div>
         
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
             {isConnected 
-              ? 'Your World App wallet is connected with native PYUSD support.'
-              : 'Connect your built-in World App wallet for seamless transactions and verification.'
+              ? 'Your World App wallet is connected to Ethereum Sepolia testnet.'
+              : 'Connect your built-in World App wallet for Ethereum Sepolia transactions.'
             }
           </p>
 
@@ -181,11 +181,11 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                   <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
-                    Connected to Worldchain
+                    Connected to Ethereum Sepolia
                   </p>
                 </div>
                 <p className="text-xs text-purple-700 dark:text-purple-300 mt-1">
-                  Gas-sponsored transactions • PYUSD native support
+                  Testnet • Chain ID: 11155111
                 </p>
               </div>
             </div>
@@ -224,31 +224,31 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
             <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
               <div>
                 <p className="font-medium">Network</p>
-                <p>Worldchain (Native)</p>
+                <p>Ethereum Sepolia</p>
               </div>
               <div>
-                <p className="font-medium">Gas Fees</p>
-                <p>Sponsored by World App</p>
+                <p className="font-medium">Chain ID</p>
+                <p>11155111</p>
               </div>
             </div>
             
             <div className="mt-3 flex gap-2">
               <a
-                href={`https://worldscan.org/address/${walletAddress}`}
+                href={`https://sepolia.etherscan.io/address/${walletAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-600 hover:text-blue-800 underline"
               >
-                View on Worldscan
+                View on Etherscan
               </a>
               <span className="text-xs text-muted-foreground">•</span>
               <a
-                href="https://bridge.worldchain.org"
+                href="https://sepoliafaucet.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-600 hover:text-blue-800 underline"
               >
-                Bridge Assets
+                Get Testnet ETH
               </a>
             </div>
           </div>

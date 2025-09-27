@@ -113,7 +113,7 @@ export default function WorldMiniApp() {
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <WorldIDVerification
-                  action="nocap-verify"
+                  action="humanhood"
                   signal={walletAddress}
                   verificationLevel={VerificationLevel.Orb}
                   onSuccess={handleVerificationSuccess}

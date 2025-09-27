@@ -74,7 +74,7 @@ const handleWalletConnect = async () => {
 - **Chain**: Ethereum Sepolia Testnet
 - **Chain ID**: 11155111
 - **Currency**: ETH (testnet)
-- **Gas**: Sponsored by World App
+- **Gas**: User pays (testnet ETH)
 - **Explorer**: https://sepolia.etherscan.io
 
 ## 📱 Components Architecture
