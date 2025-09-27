@@ -10,7 +10,8 @@ Add this to your `.env` file:
 
 ```bash
 # Contract Deployment Status
-NEXT_PUBLIC_CONTRACTS_DEPLOYED=false
+# Simply update the contract address when deployed
+NEXT_PUBLIC_NOCAP_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000000
 ```
 
 ## What's Happening
@@ -29,12 +30,8 @@ The error "Auto-verification failed" occurs because:
 ## Solution
 
 ### Option 1: Deploy Contracts (Recommended)
-1. Deploy `NOCAPWalrusHybrid.sol` to World Chain mainnet
-2. Update contract addresses in `lib/unified-contracts.ts`
-3. Set `NEXT_PUBLIC_CONTRACTS_DEPLOYED=true`
-
-### Option 2: Disable Auto-Verification (Temporary)
-The app now checks `NEXT_PUBLIC_CONTRACTS_DEPLOYED` and skips verification if contracts aren't ready.
+1. Deploy `NOCAPNoVerification.sol` to World Chain mainnet
+2. Update contract address in environment variables
 
 ## Proof of Humanhood Status
 

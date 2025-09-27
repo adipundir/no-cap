@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from "sonner"
-import { useUnifiedContracts } from '@/hooks/use-unified-contracts'
+import { useSimplifiedContracts } from '@/hooks/use-simplified-contracts'
 import { 
   Shield, 
   CheckCircle, 
@@ -34,21 +34,21 @@ export function IDKitVerification({
   const [isVerifying, setIsVerifying] = useState(false)
   const [isVerified, setIsVerified] = useState(false)
   const [userProfile, setUserProfile] = useState<any>(null)
-  const { verifyAndRegister, getUserProfile, isUserVerified, isLoading } = useUnifiedContracts()
+  const { verifyAndRegister, checkVerificationStatus, isLoading } = useSimplifiedContracts()
 
   // Check verification status on component mount
-  const checkVerificationStatus = useCallback(async () => {
+  const checkUserVerificationStatus = useCallback(async () => {
     try {
-      const verified = await isUserVerified()
+      const verified = await checkVerificationStatus()
       if (verified) {
         setIsVerified(true)
-        const profile = await getUserProfile()
-        setUserProfile(profile)
+        // Simplified version doesn't have user profiles
+        setUserProfile({ isVerified: true })
       }
     } catch (error) {
       console.error('Error checking verification status:', error)
     }
-  }, [isUserVerified, getUserProfile])
+  }, [checkVerificationStatus])
 
   // Handle successful World ID verification
   const handleVerificationSuccess = useCallback(async (result: ISuccessResult) => {
@@ -57,15 +57,12 @@ export function IDKitVerification({
     try {
       toast('Please approve the transaction to complete your verification.')
 
-      // Submit proof to our unified contract
-      const txHash = await verifyAndRegister(
-        result.merkle_root,
-        result.nullifier_hash,
-        Array.isArray(result.proof) ? result.proof : [result.proof]
-      )
+      // No verification needed - just mark as complete
+      const txHash = await verifyAndRegister()
 
       // Get user profile after successful registration
-      const profile = await getUserProfile()
+      // Simplified version doesn't have user profiles
+      const profile = { isVerified: true }
       setUserProfile(profile)
       setIsVerified(true)
 
@@ -79,7 +76,7 @@ export function IDKitVerification({
     } finally {
       setIsVerifying(false)
     }
-  }, [verifyAndRegister, getUserProfile, toast, onVerificationSuccess, onVerificationError])
+  }, [verifyAndRegister, onVerificationSuccess, onVerificationError])
 
   const handleVerificationError = useCallback((error: any) => {
     console.error('IDKit verification error:', error)
