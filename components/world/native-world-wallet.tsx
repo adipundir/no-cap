@@ -17,7 +17,7 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
   const [isConnected, setIsConnected] = useState(false)
   const [walletAddress, setWalletAddress] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
-  const [wpyusdBalance, setWpyusdBalance] = useState<string>('0')
+  const [ethBalance, setEthBalance] = useState<string>('0.0000')
 
   // Check if already connected on mount
   useEffect(() => {
@@ -26,15 +26,15 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
     // This effect can be used for other initialization if needed
   }, [])
 
-  const fetchWpyusdBalance = async (address: string) => {
+  const fetchEthBalance = async (address: string) => {
     try {
-      // This would fetch wPYUSD balance from World Chain
+      // This would fetch ETH balance from World Chain
       // For demo purposes, we'll simulate this
-      console.log('Fetching wPYUSD balance for:', address)
-      // In reality, you'd call the wPYUSD contract or use an API
-      setWpyusdBalance('100.50') // Mock balance
+      console.log('Fetching ETH balance for:', address)
+      // In reality, you'd call the World Chain RPC
+      setEthBalance('0.5000') // Mock balance
     } catch (error) {
-      console.error('Error fetching wPYUSD balance:', error)
+      console.error('Error fetching ETH balance:', error)
     }
   }
 
@@ -75,8 +75,8 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
       setWalletAddress(address)
       setIsConnected(true)
       
-      // Fetch wPYUSD balance
-      await fetchWpyusdBalance(address)
+      // Fetch ETH balance
+      await fetchEthBalance(address)
       
       console.log('World App wallet connected:', {
         address,
@@ -101,7 +101,7 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
     setWalletAddress('')
     setIsConnected(false)
     setErrorMessage('')
-    setWpyusdBalance('0')
+    setEthBalance('0.0000')
   }, [])
 
   const formatAddress = (address: string) => {
@@ -155,22 +155,24 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
                 </Button>
               </div>
 
-              {/* wPYUSD Balance */}
+              {/* ETH Balance */}
               <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                 <Coins className="h-4 w-4 text-blue-500" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                    wPYUSD Balance
+                    ETH Balance
                   </p>
                   <p className="text-xs text-blue-700 dark:text-blue-300">
-                    {wpyusdBalance} wPYUSD
+                    {ethBalance} ETH
                   </p>
                 </div>
                 <a
-                  href="/bridge"
+                  href="https://bridge.worldchain.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-xs text-blue-600 hover:text-blue-800 underline"
                 >
-                  Bridge PYUSD
+                  Bridge Assets
                 </a>
               </div>
 

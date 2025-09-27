@@ -295,6 +295,82 @@ export function useUnifiedContracts() {
   }, [])
 
   /**
+   * Load all facts from contract
+   */
+  const loadAllFacts = useCallback(async () => {
+    try {
+      return await UnifiedContractService.loadAllFacts()
+    } catch (error) {
+      console.error('Error loading all facts:', error)
+      return []
+    }
+  }, [])
+
+  /**
+   * Load active facts only
+   */
+  const loadActiveFacts = useCallback(async () => {
+    try {
+      return await UnifiedContractService.loadActiveFacts()
+    } catch (error) {
+      console.error('Error loading active facts:', error)
+      return []
+    }
+  }, [])
+
+  /**
+   * Load resolved facts only
+   */
+  const loadResolvedFacts = useCallback(async () => {
+    try {
+      return await UnifiedContractService.loadResolvedFacts()
+    } catch (error) {
+      console.error('Error loading resolved facts:', error)
+      return []
+    }
+  }, [])
+
+  /**
+   * Load facts by user
+   */
+  const loadUserFacts = useCallback(async (userAddress?: string) => {
+    try {
+      const address = userAddress || walletAddress
+      if (!address) return []
+      return await UnifiedContractService.loadUserFacts(address)
+    } catch (error) {
+      console.error('Error loading user facts:', error)
+      return []
+    }
+  }, [walletAddress])
+
+  /**
+   * Check if user has voted on a fact
+   */
+  const hasUserVoted = useCallback(async (factId: string, userAddress?: string) => {
+    try {
+      const address = userAddress || walletAddress
+      if (!address) return false
+      return await UnifiedContractService.hasUserVoted(factId, address)
+    } catch (error) {
+      console.error('Error checking vote status:', error)
+      return false
+    }
+  }, [walletAddress])
+
+  /**
+   * Get votes for a fact
+   */
+  const getFactVotes = useCallback(async (factId: string) => {
+    try {
+      return await UnifiedContractService.getFactVotes(factId)
+    } catch (error) {
+      console.error('Error fetching fact votes:', error)
+      return []
+    }
+  }, [])
+
+  /**
    * Set wallet address (called from wallet connection)
    */
   const setWalletConnection = useCallback(async (address: string) => {
@@ -336,6 +412,12 @@ export function useUnifiedContracts() {
     fetchETHBalance,
     getFact,
     getTotalFacts,
+    loadAllFacts,
+    loadActiveFacts,
+    loadResolvedFacts,
+    loadUserFacts,
+    hasUserVoted,
+    getFactVotes,
     
     // Convenience getters
     getUserProfile,

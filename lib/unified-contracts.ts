@@ -475,6 +475,143 @@ export class UnifiedContractService {
   }
 
   /**
+   * Load all facts from contract (newest first)
+   */
+  static async loadAllFacts(): Promise<any[]> {
+    try {
+      const totalFacts = await this.getTotalFacts()
+      const facts: any[] = []
+      
+      // Load facts in batches to avoid overwhelming the RPC
+      const batchSize = 10
+      for (let i = 0; i < totalFacts; i += batchSize) {
+        const batch = []
+        const end = Math.min(i + batchSize, totalFacts)
+        
+        for (let j = i; j < end; j++) {
+          batch.push(this.getFact(j.toString()))
+        }
+        
+        const batchResults = await Promise.all(batch)
+        facts.push(...batchResults)
+      }
+      
+      // Return newest first (reverse order since facts are indexed from 0)
+      return facts.reverse()
+    } catch (error) {
+      console.error('Error loading all facts:', error)
+      return []
+    }
+  }
+
+  /**
+   * Load only active (unresolved) facts
+   */
+  static async loadActiveFacts(): Promise<any[]> {
+    try {
+      const allFacts = await this.loadAllFacts()
+      const now = Date.now()
+      
+      return allFacts.filter(fact => 
+        !fact.resolved && 
+        now < (fact.deadline * 1000)
+      )
+    } catch (error) {
+      console.error('Error loading active facts:', error)
+      return []
+    }
+  }
+
+  /**
+   * Load resolved facts
+   */
+  static async loadResolvedFacts(): Promise<any[]> {
+    try {
+      const allFacts = await this.loadAllFacts()
+      return allFacts.filter(fact => fact.resolved)
+    } catch (error) {
+      console.error('Error loading resolved facts:', error)
+      return []
+    }
+  }
+
+  /**
+   * Load facts submitted by a specific user
+   */
+  static async loadUserFacts(userAddress: string): Promise<any[]> {
+    try {
+      const allFacts = await this.loadAllFacts()
+      return allFacts.filter(fact => 
+        fact.submitter.toLowerCase() === userAddress.toLowerCase()
+      )
+    } catch (error) {
+      console.error('Error loading user facts:', error)
+      return []
+    }
+  }
+
+  /**
+   * Check if user has voted on a specific fact
+   */
+  static async hasUserVoted(factId: string, userAddress: string): Promise<boolean> {
+    try {
+      const response = await fetch(WORLD_CHAIN_CONFIG.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_call',
+          params: [
+            {
+              to: WORLD_CHAIN_CONTRACTS.NOCAP_UNIFIED,
+              data: encodeContractCall(NOCAP_UNIFIED_ABI, 'hasVoted', [factId, userAddress])
+            },
+            'latest'
+          ],
+          id: 1
+        })
+      })
+      
+      const result = await response.json()
+      return result.result === '0x0000000000000000000000000000000000000000000000000000000000000001'
+    } catch (error) {
+      console.error('Error checking vote status:', error)
+      return false
+    }
+  }
+
+  /**
+   * Get votes for a specific fact
+   */
+  static async getFactVotes(factId: string): Promise<any[]> {
+    try {
+      const response = await fetch(WORLD_CHAIN_CONFIG.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_call',
+          params: [
+            {
+              to: WORLD_CHAIN_CONTRACTS.NOCAP_UNIFIED,
+              data: encodeContractCall(NOCAP_UNIFIED_ABI, 'getFactVotes', [factId])
+            },
+            'latest'
+          ],
+          id: 1
+        })
+      })
+      
+      const result = await response.json()
+      // Note: This would need proper ABI decoding in a real implementation
+      return result.result || []
+    } catch (error) {
+      console.error('Error fetching fact votes:', error)
+      return []
+    }
+  }
+
+  /**
    * Get ETH balance
    */
   static async getETHBalance(walletAddress: string): Promise<string> {

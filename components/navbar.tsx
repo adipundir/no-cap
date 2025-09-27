@@ -34,15 +34,15 @@ export function Navbar() {
   const [isWalletConnected, setIsWalletConnected] = useState(false)
   const [walletAddress, setWalletAddress] = useState<string>('')
   const [isConnecting, setIsConnecting] = useState(false)
-  const [wpyusdBalance, setWpyusdBalance] = useState<string>('0')
+  const [ethBalance, setEthBalance] = useState<string>('0.0000')
   const { toast } = useToast()
 
-  const fetchWpyusdBalance = async (address: string) => {
+  const fetchEthBalance = async (address: string) => {
     try {
-      // Mock wPYUSD balance - in real app, fetch from contract/API
-      setWpyusdBalance('100.50')
+      // Mock ETH balance - in real app, fetch from World Chain RPC
+      setEthBalance('0.5000')
     } catch (error) {
-      console.error('Error fetching wPYUSD balance:', error)
+      console.error('Error fetching ETH balance:', error)
     }
   }
 
@@ -93,7 +93,7 @@ export function Navbar() {
       const { address, signature, message } = finalPayload
       setWalletAddress(address)
       setIsWalletConnected(true)
-      await fetchWpyusdBalance(address)
+      await fetchEthBalance(address)
       
       toast({
         type: 'success',
@@ -112,14 +112,14 @@ export function Navbar() {
     } finally {
       setIsConnecting(false)
     }
-  }, [toast, fetchPyusdBalance])
+  }, [toast, fetchEthBalance])
 
 
 
   const handleDisconnect = useCallback(() => {
     setWalletAddress('')
     setIsWalletConnected(false)
-    setPyusdBalance('0')
+    setEthBalance('0.0000')
     
     toast({
       type: 'info',
@@ -215,10 +215,10 @@ export function Navbar() {
                           <Coins className="h-4 w-4 text-blue-500" />
                           <div className="flex-1">
                             <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                              wPYUSD Balance
+                              ETH Balance
                             </p>
                             <p className="text-xs text-blue-700 dark:text-blue-300">
-                              {wpyusdBalance} wPYUSD
+                              {ethBalance} ETH
                             </p>
                           </div>
                         </div>
