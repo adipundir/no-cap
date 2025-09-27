@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ShieldCheck, EyeOff, Coins } from "lucide-react";
 import TextPressure from "@/components/TextPressure";
 
 export default function Home() {
@@ -7,7 +9,7 @@ export default function Home() {
       {/* HERO SECTION */}
       <main className="flex-1 flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-4xl text-center">
-          <div style={{ position: 'relative', height: '320px', marginBottom: '2rem' }}>
+          <div className="relative h-[240px] md:h-[300px] mb-4 md:mb-6">
             <TextPressure
               text="NOCAP"
               flex={true}
@@ -22,7 +24,7 @@ export default function Home() {
             />
           </div>
           
-          <div className="space-y-6">
+          <div className="space-y-5 md:space-y-6">
             <p className="text-[16px] md:text-lg text-muted-foreground max-w-2xl mx-auto">
               Community-driven fact verification. Anonymous reviews. On-chain transparency.
             </p>
@@ -32,28 +34,49 @@ export default function Home() {
             </Button>
 
             {/* Minimal stats to fill space */}
-            <div className="mt-16 flex items-center justify-center space-x-8 text-xs text-muted-foreground">
-              <div className="text-center">
-                <div className="font-mono">24/7</div>
-                <div className="mt-1">Verification</div>
-              </div>
-              <div className="w-px h-8 bg-border"></div>
-              <div className="text-center">
-                <div className="font-mono">100%</div>
-                <div className="mt-1">Anonymous</div>
-              </div>
-              <div className="w-px h-8 bg-border"></div>
-              <div className="text-center">
-                <div className="font-mono">∞</div>
-                <div className="mt-1">Transparency</div>
-              </div>
+            <div className="flex items-center justify-center space-x-8 text-xs text-muted-foreground">
+            </div>
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3 max-w-4xl mx-auto">
+              <Card variant="module" className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
+                    <ShieldCheck className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 text-center">
+                    <div className="text-sm font-medium">Human-verified</div>
+                    <p className="text-xs text-muted-foreground">Only verified humans can participate.</p>
+                  </div>
+                </div>
+              </Card>
+              <Card variant="module" className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
+                    <EyeOff className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 text-center">
+                    <div className="text-sm font-medium">Anonymous by default</div>
+                    <p className="text-xs text-muted-foreground">Context without identity leakage.</p>
+                  </div>
+                </div>
+              </Card>
+              <Card variant="module" className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
+                    <Coins className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 text-center">
+                    <div className="text-sm font-medium">On-chain rewards</div>
+                    <p className="text-xs text-muted-foreground">Stake PYUSD. Earn for correct calls.</p>
+                  </div>
+                </div>
+              </Card>
             </div>
           </div>
         </div>
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
+      <footer className="border-t border-border py-8 text-center text-xs md:text-sm text-muted-foreground">
         <div className="mx-auto max-w-7xl px-4">
           © {new Date().getFullYear()} NOCAP — Verified humans, anonymous reviews
         </div>
