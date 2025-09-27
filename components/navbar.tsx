@@ -27,6 +27,7 @@ import {
   Moon
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { fetchUserBalances } from '@/lib/actions/fetch-balances'
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme()
@@ -43,53 +44,21 @@ export default function Navbar() {
 
     setIsLoadingBalances(true)
     try {
-      // Fetch ETH balance
-      const rpcUrl = process.env.NEXT_PUBLIC_WORLD_CHAIN_RPC || 'https://worldchain-mainnet.g.alchemy.com/public'
-      const ethResponse = await fetch(rpcUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_getBalance',
-          params: [address, 'latest'],
-          id: 1
-        })
-      })
+      const balances = await fetchUserBalances(address)
       
-      const ethData = await ethResponse.json()
-      if (ethData.result) {
-        const ethBalanceWei = BigInt(ethData.result)
-        const ethBalanceEth = Number(ethBalanceWei) / 1e18
-        setEthBalance(ethBalanceEth.toFixed(4))
+      setEthBalance(balances.eth)
+      setWldBalance(balances.wld)
+
+      // Show info if using fallback method
+      if (balances.error && balances.error.includes('free RPC')) {
+        console.info('💡 Add ONEINCH_API_KEY for enhanced balance features')
       }
 
-      // Fetch WLD balance (ERC-20 token)
-      const wldTokenAddress = '0x163f8c2467924be0ae7b5347228cabf260318753'
-      const balanceOfSignature = '0x70a08231' // balanceOf(address)
-      const paddedAddress = address.slice(2).padStart(64, '0')
-      
-      const wldResponse = await fetch(rpcUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_call',
-          params: [{
-            to: wldTokenAddress,
-            data: balanceOfSignature + paddedAddress
-          }, 'latest'],
-          id: 2
-        })
-      })
-      
-      const wldData = await wldResponse.json()
-      if (wldData.result && wldData.result !== '0x') {
-        const wldBalanceWei = BigInt(wldData.result)
-        const wldBalanceTokens = Number(wldBalanceWei) / 1e18
-        setWldBalance(wldBalanceTokens.toFixed(4))
-      }
     } catch (error) {
-      console.error('Error fetching balances:', error)
+      console.error('Failed to fetch balances:', error)
+      setEthBalance('0.0000')
+      setWldBalance('0.00')
+      toast.error('Failed to fetch wallet balances')
     } finally {
       setIsLoadingBalances(false)
     }
