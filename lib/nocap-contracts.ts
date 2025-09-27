@@ -65,26 +65,19 @@ export const NOCAP_ABI = [
     "inputs": [{"internalType": "uint256", "name": "factId", "type": "uint256"}],
     "name": "getFact",
     "outputs": [
-      {
-        "components": [
-          {"internalType": "uint256", "name": "id", "type": "uint256"},
-          {"internalType": "address", "name": "creator", "type": "address"},
-          {"internalType": "string", "name": "walrusBlobId", "type": "string"},
-          {"internalType": "uint256", "name": "creatorStake", "type": "uint256"},
-          {"internalType": "uint256", "name": "capVotes", "type": "uint256"},
-          {"internalType": "uint256", "name": "noCapVotes", "type": "uint256"},
-          {"internalType": "uint256", "name": "totalCapStake", "type": "uint256"},
-          {"internalType": "uint256", "name": "totalNoCapStake", "type": "uint256"},
-          {"internalType": "uint256", "name": "createdAt", "type": "uint256"},
-          {"internalType": "uint256", "name": "deadline", "type": "uint256"},
-          {"internalType": "bool", "name": "resolved", "type": "bool"},
-          {"internalType": "bool", "name": "outcome", "type": "bool"},
-          {"internalType": "uint256", "name": "totalRewards", "type": "uint256"}
-        ],
-        "internalType": "struct NOCAPFactChecker.Fact",
-        "name": "fact",
-        "type": "tuple"
-      }
+      {"internalType": "uint256", "name": "id", "type": "uint256"},
+      {"internalType": "address", "name": "creator", "type": "address"},
+      {"internalType": "string", "name": "walrusBlobId", "type": "string"},
+      {"internalType": "uint256", "name": "creatorStake", "type": "uint256"},
+      {"internalType": "uint256", "name": "capVotes", "type": "uint256"},
+      {"internalType": "uint256", "name": "noCapVotes", "type": "uint256"},
+      {"internalType": "uint256", "name": "totalCapStake", "type": "uint256"},
+      {"internalType": "uint256", "name": "totalNoCapStake", "type": "uint256"},
+      {"internalType": "uint256", "name": "createdAt", "type": "uint256"},
+      {"internalType": "uint256", "name": "deadline", "type": "uint256"},
+      {"internalType": "bool", "name": "resolved", "type": "bool"},
+      {"internalType": "bool", "name": "outcome", "type": "bool"},
+      {"internalType": "uint256", "name": "totalRewards", "type": "uint256"}
     ],
     "stateMutability": "view",
     "type": "function"
