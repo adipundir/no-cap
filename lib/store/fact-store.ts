@@ -1,5 +1,6 @@
 import type { Fact } from '@/types/fact';
 import type { WalrusBlobMetadata } from '@/types/walrus';
+import { getFactIndex, rebuildFactIndex } from './fact-index';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -46,11 +47,28 @@ function saveCachedFacts() {
   }
 }
 
-// Initialize cache
+// Initialize cache and index
 loadCachedFacts();
 
+// Build index from cached facts
+if (factRecords.size > 0) {
+  rebuildFactIndex(Array.from(factRecords.values()));
+}
+
 export function upsertFactRecord(record: StoredFactRecord): void {
+  const index = getFactIndex();
+  const existingRecord = factRecords.get(record.fact.id);
+  
   factRecords.set(record.fact.id, record);
+  
+  if (existingRecord) {
+    // Update existing fact in index
+    index.updateFact(record.fact.id, record);
+  } else {
+    // Add new fact to index
+    index.indexFact(record);
+  }
+  
   saveCachedFacts();
 }
 
@@ -64,5 +82,6 @@ export function getFactRecord(id: string): StoredFactRecord | undefined {
 
 export function clearFactRecords(): void {
   factRecords.clear();
+  getFactIndex().clear();
   saveCachedFacts();
 }

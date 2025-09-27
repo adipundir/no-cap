@@ -31,7 +31,9 @@ export type FullFact = Fact & {
   fullContent?: string;
   sources?: string[];
   metadata: {
+    author: string;
     created: Date;
+    updated: Date;
     lastModified: Date;
     version: number;
     contentType: 'text/plain' | 'text/markdown' | 'text/html';

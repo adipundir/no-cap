@@ -10,7 +10,7 @@ interface RouteParams {
 }
 
 export async function GET(_request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
-  const { id } = params;
+  const { id } = await params;
   const record = getFactRecord(id);
   if (!record) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -19,7 +19,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
-  const { id } = params;
+  const { id } = await params;
   const record = getFactRecord(id);
   if (!record) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });

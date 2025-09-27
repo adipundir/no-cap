@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
+import { normalizeFullFact } from '@/lib/utils/fact-normalizer';
 import type { Fact, FullFact } from '@/types/fact';
 import {
   upsertFactRecord,
@@ -29,35 +30,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'id is required' }, { status: 400 });
     }
 
+    // Normalize the fact to ensure proper tags, keywords, and metadata
+    const normalizedFact = normalizeFullFact(body);
+
     const walrus = initializeWalrusFromEnv();
     await walrus.initialize();
 
+    const { status, votes, comments, author, updated, walrusBlobId, contentHash, ...factContent } = normalizedFact;
+
     const storeResult = await walrus.storage.storeFact({
-      id: body.id,
-      title: body.title,
-      summary: body.summary,
-      fullContent: body.fullContent,
-      sources: body.sources,
-      metadata: {
-        author: body.metadata.author,
-        created: new Date(body.metadata.created),
-        updated: new Date(body.metadata.updated),
-        version: body.metadata.version,
-      },
+      ...factContent,
+      metadata: factContent.metadata,
     });
 
     const fact: Fact = {
-      id: body.id,
-      title: body.title,
-      summary: body.summary,
-      status: body.status,
-      votes: body.votes,
-      comments: body.comments,
-      author: body.author,
-      updated: body.updated,
+      id: normalizedFact.id,
+      title: normalizedFact.title,
+      summary: normalizedFact.summary,
+      status: normalizedFact.status,
+      votes: normalizedFact.votes,
+      comments: normalizedFact.comments,
+      author: normalizedFact.author,
+      updated: normalizedFact.updated,
       walrusBlobId: storeResult.walrusMetadata.blobId,
-      contentHash: body.contentHash,
-      metadata: body.metadata,
+      contentHash: normalizedFact.contentHash,
+      metadata: normalizedFact.metadata,
     };
 
     upsertFactRecord({

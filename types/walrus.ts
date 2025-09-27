@@ -46,6 +46,8 @@ export interface WalrusStorageConfig {
   maxBlobSize?: number; // in bytes
 }
 
+import type { FactTag } from '@/types/fact';
+
 // Fact-specific storage interfaces
 export interface FactContent {
   id: string;
@@ -58,6 +60,11 @@ export interface FactContent {
     created: Date;
     updated: Date;
     version: number;
+    contentType?: 'text/plain' | 'text/markdown' | 'text/html';
+    tags?: FactTag[];
+    keywords?: string[];
+    region?: string;
+    importance?: number;
   };
 }
 

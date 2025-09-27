@@ -6,7 +6,8 @@ import {
   TagCategory,
   FactTag
 } from '@/types/fact';
-import { listFactRecords } from '@/lib/store/fact-store';
+import { listFactRecords, getFactRecord } from '@/lib/store/fact-store';
+import { getFactIndex } from '@/lib/store/fact-index';
 import { ensureSeedFacts } from '@/lib/seed/facts';
 
 /**
@@ -26,9 +27,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       author: searchParams.get('author') || undefined,
       region: searchParams.get('region') || undefined,
       minImportance: searchParams.get('minImportance') ? parseInt(searchParams.get('minImportance')!) : undefined,
-      dateRange: parseDate
-
-Range(searchParams.get('dateFrom'), searchParams.get('dateTo')),
+      dateRange: parseDateRange(searchParams.get('dateFrom'), searchParams.get('dateTo')),
       limit: parseInt(searchParams.get('limit') || '20'),
       offset: parseInt(searchParams.get('offset') || '0'),
       sortBy: (searchParams.get('sortBy') as any) || 'relevance',
@@ -36,65 +35,41 @@ Range(searchParams.get('dateFrom'), searchParams.get('dateTo')),
     };
 
     await ensureSeedFacts();
-    const records = listFactRecords();
+    const factIndex = getFactIndex();
     
-    // Filter facts based on search criteria
-    let filteredFacts = records.map(r => r.fact).filter(fact => {
-      // Status filter
-      if (query.status && query.status.length > 0 && !query.status.includes(fact.status)) {
-        return false;
-      }
+    // Use indexed search for efficient lookups
+    const searchCriteria = {
+      tags: query.tags,
+      categories: query.categories,
+      keywords: query.keywords?.toLowerCase().split(' ').filter(k => k.length > 0),
+      author: query.author,
+      region: query.region,
+      status: query.status,
+    };
 
-      // Author filter
-      if (query.author && fact.author.toLowerCase() !== query.author.toLowerCase()) {
-        return false;
-      }
-
-      // Region filter
-      if (query.region && fact.metadata?.region !== query.region) {
-        return false;
-      }
-
-      // Importance filter
-      if (query.minImportance && (fact.metadata?.importance || 0) < query.minImportance) {
-        return false;
-      }
-
-      // Date range filter
-      if (query.dateRange) {
-        const factDate = new Date(fact.updated);
-        if (factDate < query.dateRange.from || factDate > query.dateRange.to) {
+    // Get fact IDs using efficient indexed search
+    const indexedFactIds = factIndex.searchFacts(searchCriteria);
+    
+    // Get full fact records and apply remaining filters
+    let filteredFacts = indexedFactIds
+      .map(id => getFactRecord(id)?.fact)
+      .filter((fact): fact is Fact => fact !== undefined)
+      .filter(fact => {
+        // Importance filter
+        if (query.minImportance && (fact.metadata?.importance || 0) < query.minImportance) {
           return false;
         }
-      }
 
-      // Tags filter
-      if (query.tags && query.tags.length > 0) {
-        const factTags = fact.metadata?.tags?.map((t: FactTag) => t.name) || [];
-        if (!query.tags.some(tag => factTags.includes(tag))) {
-          return false;
+        // Date range filter  
+        if (query.dateRange) {
+          const factDate = new Date(fact.updated);
+          if (factDate < query.dateRange.from || factDate > query.dateRange.to) {
+            return false;
+          }
         }
-      }
 
-      // Category filter
-      if (query.categories && query.categories.length > 0) {
-        const factCategories = fact.metadata?.tags?.map((t: FactTag) => t.category) || [];
-        if (!query.categories.some(cat => factCategories.includes(cat))) {
-          return false;
-        }
-      }
-
-      // Keywords filter (simple text search)
-      if (query.keywords) {
-        const searchText = `${fact.title} ${fact.summary}`.toLowerCase();
-        const keywords = query.keywords.toLowerCase().split(' ');
-        if (!keywords.some(keyword => searchText.includes(keyword))) {
-          return false;
-        }
-      }
-
-      return true;
-    });
+        return true;
+      });
 
     // Calculate relevance scores for sorting
     if (query.sortBy === 'relevance' && query.keywords) {
@@ -128,8 +103,8 @@ Range(searchParams.get('dateFrom'), searchParams.get('dateTo')),
       return query.sortOrder === 'asc' ? -comparison : comparison;
     });
 
-    // Generate facets for UI filtering
-    const facets = generateFacets(records.map(r => r.fact), filteredFacts);
+    // Generate facets for UI filtering using index
+    const facets = generateFacetsFromIndex(factIndex, filteredFacts);
 
     // Paginate results
     const totalCount = filteredFacts.length;
@@ -247,7 +222,38 @@ function calculateRelevanceScore(fact: Fact, keywords: string): number {
   return score;
 }
 
+function generateFacetsFromIndex(factIndex: ReturnType<typeof getFactIndex>, filteredFacts: Fact[]) {
+  // Get facet data efficiently from the index
+  const allTagStats = factIndex.getTagStats();
+  const allCategoryStats = factIndex.getCategoryStats();
+  
+  // Count authors and regions from filtered facts
+  const authorCounts = new Map<string, number>();
+  const regionCounts = new Map<string, number>();
+
+  filteredFacts.forEach(fact => {
+    authorCounts.set(fact.author, (authorCounts.get(fact.author) || 0) + 1);
+    if (fact.metadata?.region) {
+      regionCounts.set(fact.metadata.region, (regionCounts.get(fact.metadata.region) || 0) + 1);
+    }
+  });
+
+  return {
+    tags: allTagStats.slice(0, 20), // Top 20 tags by popularity
+    categories: allCategoryStats,    // All categories
+    authors: Array.from(authorCounts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10),
+    regions: Array.from(regionCounts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+  };
+}
+
 function generateFacets(allFacts: Fact[], filteredFacts: Fact[]) {
+  // Legacy function - kept for compatibility
   const tagCounts = new Map<string, number>();
   const categoryCounts = new Map<string, number>();
   const authorCounts = new Map<string, number>();
