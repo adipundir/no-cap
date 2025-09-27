@@ -75,11 +75,17 @@ let seeded = false;
 let seedingPromise: Promise<void> | null = null;
 
 export async function ensureSeedFacts(): Promise<void> {
-  if (seeded || process.env.NODE_ENV === 'test') {
+  if (process.env.NODE_ENV === 'test') {
     return;
   }
 
-  if (listFactRecords().length > 0) {
+  // Check if we have the basic seeded facts (not user-submitted ones)
+  const currentFacts = listFactRecords();
+  const hasSeededFacts = SAMPLE_FACTS.some(sample => 
+    currentFacts.some(record => record.fact.id === sample.id)
+  );
+
+  if (hasSeededFacts) {
     seeded = true;
     return;
   }
@@ -93,7 +99,15 @@ export async function ensureSeedFacts(): Promise<void> {
       const walrus = initializeWalrusFromEnv();
       await walrus.initialize();
 
+      // Only seed facts that don't already exist
+      const existingFactIds = new Set(listFactRecords().map(r => r.fact.id));
+
       for (const sample of SAMPLE_FACTS) {
+        // Skip if this seeded fact already exists
+        if (existingFactIds.has(sample.id)) {
+          continue;
+        }
+
         const { status, votes, comments, author, updated, walrusBlobId, contentHash, metadata, ...factContent } = sample;
 
         const stored = await walrus.storage.storeFact({
