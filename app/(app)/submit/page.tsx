@@ -27,7 +27,7 @@ export default function SubmitPage() {
 
     // Check if user is verified
     if (!isVerified) {
-      alert('Please verify your humanity with World ID first by visiting the World App page.');
+      alert('Please verify your humanity with World ID first. Connect your World App wallet and complete verification.');
       return;
     }
 
@@ -63,10 +63,7 @@ export default function SubmitPage() {
             <div className="flex items-center gap-3">
               <div className="h-2 w-2 bg-orange-500 rounded-full"></div>
               <p className="text-sm text-orange-800 dark:text-orange-200">
-                <strong>Verification Required:</strong> You must verify your humanity with World ID to submit facts.{' '}
-                <Link href="/world" className="underline hover:no-underline">
-                  Verify now →
-                </Link>
+                <strong>Verification Required:</strong> You must verify your humanity with World ID to submit facts. Please connect your World App wallet and complete verification first.
               </p>
             </div>
           </div>
