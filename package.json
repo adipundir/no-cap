@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@hibernuts/walrus-sdk": "^1.0.1",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/themes": "^3.2.1",
     "@worldcoin/minikit-js": "^1.7.1",
