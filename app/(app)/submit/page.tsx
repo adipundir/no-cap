@@ -10,7 +10,7 @@ import { toast } from "sonner"
 export default function SubmitPage() {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
-  const [sources, setSources] = useState<Array<{url: string, title: string}>>([]);
+  const [source, setSource] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [stake, setStake] = useState(0);
   const [enableStaking, setEnableStaking] = useState(false);
@@ -33,18 +33,19 @@ export default function SubmitPage() {
 
     setIsSubmitting(true);
     try {
-      // Prepare sources with access timestamps
-      const sourcesWithTimestamp = sources.map(source => ({
-        ...source,
+      // Prepare source with access timestamp (if provided)
+      const sourceWithTimestamp = source.trim() ? [{
+        url: source.trim(),
+        title: source.trim(),
         accessedAt: new Date().toISOString()
-      }));
+      }] : [];
 
       const stakeAmount = enableStaking && stake > 0 ? stake.toString() : undefined;
 
       const txHash = await createFact(
         title, 
         summary, 
-        sourcesWithTimestamp,
+        sourceWithTimestamp,
         tags,
         stakeAmount
       );
@@ -54,7 +55,7 @@ export default function SubmitPage() {
       // Reset form
       setTitle("");
       setSummary("");
-      setSources([]);
+      setSource("");
       setTags([]);
       setStake(0);
       setEnableStaking(false);
@@ -107,54 +108,15 @@ export default function SubmitPage() {
                       />
                     </div>
 
-                    {/* Sources */}
+                    {/* Source */}
                     <div>
-                      <label className="mb-1 block text-sm font-medium">Sources (optional)</label>
-                      <div className="space-y-2">
-                        {sources.map((source, index) => (
-                          <div key={index} className="flex gap-2">
-                            <input
-                              className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
-                              placeholder="Source URL"
-                              value={source.url}
-                              onChange={(e) => {
-                                const newSources = [...sources];
-                                newSources[index].url = e.target.value;
-                                setSources(newSources);
-                              }}
-                            />
-                            <input
-                              className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
-                              placeholder="Source title"
-                              value={source.title}
-                              onChange={(e) => {
-                                const newSources = [...sources];
-                                newSources[index].title = e.target.value;
-                                setSources(newSources);
-                              }}
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const newSources = sources.filter((_, i) => i !== index);
-                                setSources(newSources);
-                              }}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        ))}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSources([...sources, { url: '', title: '' }])}
-                        >
-                          Add Source
-                        </Button>
-                      </div>
+                      <label className="mb-1 block text-sm font-medium">Source (optional)</label>
+                      <input
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                        placeholder="Enter source URL or reference"
+                        value={source}
+                        onChange={(e) => setSource(e.target.value)}
+                      />
                     </div>
 
                     {/* Tags */}
