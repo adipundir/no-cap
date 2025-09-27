@@ -6,8 +6,7 @@ import {
   TagCategory,
   FactTag
 } from '@/types/fact';
-import { listFactRecords, getFactRecord } from '@/lib/store/fact-store';
-import { getFactIndex } from '@/lib/store/fact-index';
+import { getWalrusIndexManager } from '@/lib/walrus-index';
 import { ensureSeedFacts } from '@/lib/seed/facts';
 
 /**
@@ -35,41 +34,38 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     };
 
     await ensureSeedFacts();
-    const factIndex = getFactIndex();
+    const walrusIndex = getWalrusIndexManager();
     
-    // Use indexed search for efficient lookups
+    // Search facts directly from Walrus
     const searchCriteria = {
       tags: query.tags,
-      categories: query.categories,
       keywords: query.keywords?.toLowerCase().split(' ').filter(k => k.length > 0),
       author: query.author,
       region: query.region,
       status: query.status,
+      limit: query.limit,
+      offset: query.offset,
     };
 
-    // Get fact IDs using efficient indexed search
-    const indexedFactIds = factIndex.searchFacts(searchCriteria);
+    const { facts: searchedFacts, totalCount } = await walrusIndex.searchFacts(searchCriteria);
     
-    // Get full fact records and apply remaining filters
-    let filteredFacts = indexedFactIds
-      .map(id => getFactRecord(id)?.fact)
-      .filter((fact): fact is Fact => fact !== undefined)
-      .filter(fact => {
-        // Importance filter
-        if (query.minImportance && (fact.metadata?.importance || 0) < query.minImportance) {
+    // Apply additional filters not handled by Walrus search
+    let filteredFacts = searchedFacts.filter(fact => {
+      // Importance filter
+      if (query.minImportance && (fact.metadata?.importance || 0) < query.minImportance) {
+        return false;
+      }
+
+      // Date range filter  
+      if (query.dateRange) {
+        const factDate = new Date(fact.updated);
+        if (factDate < query.dateRange.from || factDate > query.dateRange.to) {
           return false;
         }
+      }
 
-        // Date range filter  
-        if (query.dateRange) {
-          const factDate = new Date(fact.updated);
-          if (factDate < query.dateRange.from || factDate > query.dateRange.to) {
-            return false;
-          }
-        }
-
-        return true;
-      });
+      return true;
+    });
 
     // Calculate relevance scores for sorting
     if (query.sortBy === 'relevance' && query.keywords) {
@@ -103,12 +99,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return query.sortOrder === 'asc' ? -comparison : comparison;
     });
 
-    // Generate facets for UI filtering using index
-    const facets = generateFacetsFromIndex(factIndex, filteredFacts);
+    // Generate facets for UI filtering
+    const facets = generateFacetsFromWalrus(filteredFacts);
 
-    // Paginate results
-    const totalCount = filteredFacts.length;
-    const paginatedFacts = filteredFacts.slice(query.offset!, query.offset! + query.limit!);
+    // Results are already paginated by Walrus search
+    const finalCount = filteredFacts.length;
+    const paginatedFacts = filteredFacts;
 
     // Clean up temporary fields
     const cleanFacts = paginatedFacts.map(fact => {
@@ -118,7 +114,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const response: FactSearchResponse = {
       facts: cleanFacts,
-      totalCount,
+      totalCount: totalCount, // From Walrus search
       facets,
       page: {
         limit: query.limit!,
@@ -222,25 +218,36 @@ function calculateRelevanceScore(fact: Fact, keywords: string): number {
   return score;
 }
 
-function generateFacetsFromIndex(factIndex: ReturnType<typeof getFactIndex>, filteredFacts: Fact[]) {
-  // Get facet data efficiently from the index
-  const allTagStats = factIndex.getTagStats();
-  const allCategoryStats = factIndex.getCategoryStats();
-  
-  // Count authors and regions from filtered facts
+function generateFacetsFromWalrus(filteredFacts: Fact[]) {
+  const tagCounts = new Map<string, number>();
+  const categoryCounts = new Map<string, number>();
   const authorCounts = new Map<string, number>();
   const regionCounts = new Map<string, number>();
 
   filteredFacts.forEach(fact => {
+    // Count tags
+    fact.metadata?.tags?.forEach((tag: FactTag) => {
+      tagCounts.set(tag.name, (tagCounts.get(tag.name) || 0) + 1);
+      categoryCounts.set(tag.category, (categoryCounts.get(tag.category) || 0) + 1);
+    });
+
+    // Count authors
     authorCounts.set(fact.author, (authorCounts.get(fact.author) || 0) + 1);
+
+    // Count regions
     if (fact.metadata?.region) {
       regionCounts.set(fact.metadata.region, (regionCounts.get(fact.metadata.region) || 0) + 1);
     }
   });
 
   return {
-    tags: allTagStats.slice(0, 20), // Top 20 tags by popularity
-    categories: allCategoryStats,    // All categories
+    tags: Array.from(tagCounts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20),
+    categories: Array.from(categoryCounts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count),
     authors: Array.from(authorCounts.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)

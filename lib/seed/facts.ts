@@ -1,5 +1,5 @@
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
-import { upsertFactRecord, listFactRecords } from '@/lib/store/fact-store';
+import { getWalrusIndexManager } from '@/lib/walrus-index';
 import { normalizeFullFact } from '@/lib/utils/fact-normalizer';
 import type { FullFact, Fact, FactTag } from '@/types/fact';
 
@@ -658,9 +658,10 @@ export async function ensureSeedFacts(): Promise<void> {
   }
 
   // Check if we have the basic seeded facts (not user-submitted ones)
-  const currentFacts = listFactRecords();
+  const walrusIndex = getWalrusIndexManager();
+  const mainIndex = await walrusIndex.getMainIndex();
   const hasSeededFacts = SAMPLE_FACTS.some(sample => 
-    currentFacts.some(record => record.fact.id === sample.id)
+    mainIndex.facts.some(factMeta => factMeta.id === sample.id)
   );
 
   if (hasSeededFacts) {
@@ -678,7 +679,8 @@ export async function ensureSeedFacts(): Promise<void> {
       await walrus.initialize();
 
       // Only seed facts that don't already exist
-      const existingFactIds = new Set(listFactRecords().map(r => r.fact.id));
+      const currentIndex = await walrusIndex.getMainIndex();
+      const existingFactIds = new Set(currentIndex.facts.map(f => f.id));
 
       for (const sample of SAMPLE_FACTS) {
         // Skip if this seeded fact already exists
@@ -686,35 +688,47 @@ export async function ensureSeedFacts(): Promise<void> {
           continue;
         }
 
+        console.log(`Seeding fact: ${sample.id}`);
+
         // Normalize the fact before storing
         const normalizedFact = normalizeFullFact(sample);
-        const { status, votes, comments, author, updated, walrusBlobId, contentHash, metadata, ...factContent } = normalizedFact;
 
-        const stored = await walrus.storage.storeFact({
-          ...factContent,
-          metadata: metadata,
+        // Store the full fact as JSON to Walrus
+        const factData = JSON.stringify({
+          id: normalizedFact.id,
+          title: normalizedFact.title,
+          summary: normalizedFact.summary,
+          status: normalizedFact.status,
+          votes: normalizedFact.votes,
+          comments: normalizedFact.comments,
+          author: normalizedFact.author,
+          updated: normalizedFact.updated,
+          fullContent: normalizedFact.fullContent,
+          sources: normalizedFact.sources,
+          metadata: normalizedFact.metadata,
+        });
+
+        const storeResult = await walrus.storage.storeBlob(factData, {
+          mimeType: 'application/json'
         });
 
         const fact: Fact = {
-          id: sample.id,
-          title: sample.title,
-          summary: sample.summary,
-          status: sample.status,
-          votes: sample.votes,
-          comments: sample.comments,
-          author: sample.author,
-          updated: sample.updated,
-          walrusBlobId: stored.walrusMetadata.blobId,
-          contentHash: sample.contentHash,
-          metadata: metadata,
+          id: normalizedFact.id,
+          title: normalizedFact.title,
+          summary: normalizedFact.summary,
+          status: normalizedFact.status,
+          votes: normalizedFact.votes,
+          comments: normalizedFact.comments,
+          author: normalizedFact.author,
+          updated: normalizedFact.updated,
+          walrusBlobId: storeResult.metadata.blobId,
+          contentHash: normalizedFact.contentHash,
+          metadata: normalizedFact.metadata,
         };
 
-        upsertFactRecord({
-          fact,
-          walrusBlobId: stored.walrusMetadata.blobId,
-          walrusMetadata: stored.walrusMetadata,
-          availabilityCertificate: stored.availabilityCertificate,
-        });
+        // Add to Walrus index (this stores the index on Walrus)
+        await walrusIndex.addFactToIndex(fact, storeResult.metadata.blobId);
+        console.log(`✓ Seeded fact ${fact.id} with blob ID: ${storeResult.metadata.blobId}`);
       }
 
       seeded = true;

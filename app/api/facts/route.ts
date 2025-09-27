@@ -1,22 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { normalizeFullFact } from '@/lib/utils/fact-normalizer';
+import { getWalrusIndexManager } from '@/lib/walrus-index';
 import type { Fact, FullFact } from '@/types/fact';
-import {
-  upsertFactRecord,
-  listFactRecords,
-  getFactRecord
-} from '@/lib/store/fact-store';
 import { ensureSeedFacts } from '@/lib/seed/facts';
 
 /**
  * GET /api/facts
- * Returns list of facts with Walrus metadata
+ * Returns list of facts directly from Walrus
  */
-export async function GET(): Promise<NextResponse> {
-  await ensureSeedFacts();
-  const records = listFactRecords();
-  return NextResponse.json({ facts: records.map((record) => record.fact) });
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  try {
+    await ensureSeedFacts();
+    
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = parseInt(searchParams.get('offset') || '0');
+    
+    const walrusIndex = getWalrusIndexManager();
+    const { facts, totalCount } = await walrusIndex.listFacts(limit, offset);
+    
+    return NextResponse.json({ 
+      facts, 
+      totalCount,
+      page: {
+        limit,
+        offset,
+        hasMore: offset + limit < totalCount
+      }
+    });
+  } catch (error) {
+    console.error('Failed to list facts from Walrus:', error);
+    return NextResponse.json({ error: 'Failed to retrieve facts' }, { status: 500 });
+  }
 }
 
 /**
@@ -36,11 +52,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const walrus = initializeWalrusFromEnv();
     await walrus.initialize();
 
-    const { status, votes, comments, author, updated, walrusBlobId, contentHash, ...factContent } = normalizedFact;
+    // Store the full fact to Walrus as JSON
+    const factData = JSON.stringify({
+      id: normalizedFact.id,
+      title: normalizedFact.title,
+      summary: normalizedFact.summary,
+      status: normalizedFact.status,
+      votes: normalizedFact.votes,
+      comments: normalizedFact.comments,
+      author: normalizedFact.author,
+      updated: normalizedFact.updated,
+      fullContent: normalizedFact.fullContent,
+      sources: normalizedFact.sources,
+      metadata: normalizedFact.metadata,
+    });
 
-    const storeResult = await walrus.storage.storeFact({
-      ...factContent,
-      metadata: factContent.metadata,
+    const storeResult = await walrus.storage.storeBlob(factData, {
+      mimeType: 'application/json'
     });
 
     const fact: Fact = {
@@ -52,17 +80,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       comments: normalizedFact.comments,
       author: normalizedFact.author,
       updated: normalizedFact.updated,
-      walrusBlobId: storeResult.walrusMetadata.blobId,
+      walrusBlobId: storeResult.metadata.blobId,
       contentHash: normalizedFact.contentHash,
       metadata: normalizedFact.metadata,
     };
 
-    upsertFactRecord({
-      fact,
-      walrusBlobId: storeResult.walrusMetadata.blobId,
-      walrusMetadata: storeResult.walrusMetadata,
-      availabilityCertificate: storeResult.availabilityCertificate,
-    });
+    // Update the Walrus index with this new fact
+    const walrusIndex = getWalrusIndexManager();
+    await walrusIndex.addFactToIndex(fact, storeResult.metadata.blobId);
 
     return NextResponse.json({ fact }, { status: 201 });
   } catch (error) {
