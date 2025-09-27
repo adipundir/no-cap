@@ -37,19 +37,82 @@ export function Navbar() {
   const [walletAddress, setWalletAddress] = useState<string>('')
   const [isConnecting, setIsConnecting] = useState(false)
   const [ethBalance, setEthBalance] = useState<string>('0.0000')
+  const [wldBalance, setWldBalance] = useState<string>('0.0000')
   const [isVerified, setIsVerified] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
+  const [isLoadingBalances, setIsLoadingBalances] = useState(false)
   const { toast } = useToast()
   const { verifyAndRegister, checkVerificationStatus, setWalletConnection } = useUnifiedContracts()
 
-  const fetchEthBalance = async (address: string) => {
+  const fetchBalances = useCallback(async (address: string) => {
+    if (!address) return
+    
+    setIsLoadingBalances(true)
     try {
-      // Mock ETH balance - in real app, fetch from World Chain RPC
-      setEthBalance('0.5000')
+      // Fetch ETH balance from World Chain
+      const ethResponse = await fetch('https://worldchain-mainnet.g.alchemy.com/public', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_getBalance',
+          params: [address, 'latest'],
+          id: 1,
+        }),
+      })
+      
+      const ethData = await ethResponse.json()
+      if (ethData.result) {
+        // Convert from wei to ETH
+        const ethBalanceWei = BigInt(ethData.result)
+        const ethBalanceEth = Number(ethBalanceWei) / 1e18
+        setEthBalance(ethBalanceEth.toFixed(4))
+      }
+
+      // Fetch WLD balance (ERC-20 token)
+      const wldTokenAddress = '0x2cFc85d8E48F8EAB294be644d9E25C3030863003' // WLD on World Chain
+      
+      // ERC-20 balanceOf function call data
+      const balanceOfData = '0x70a08231' + address.slice(2).padStart(64, '0')
+      
+      const wldResponse = await fetch('https://worldchain-mainnet.g.alchemy.com/public', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_call',
+          params: [
+            {
+              to: wldTokenAddress,
+              data: balanceOfData,
+            },
+            'latest'
+          ],
+          id: 2,
+        }),
+      })
+      
+      const wldData = await wldResponse.json()
+      if (wldData.result && wldData.result !== '0x') {
+        // Convert from wei to WLD (18 decimals)
+        const wldBalanceWei = BigInt(wldData.result)
+        const wldBalanceTokens = Number(wldBalanceWei) / 1e18
+        setWldBalance(wldBalanceTokens.toFixed(2))
+      } else {
+        setWldBalance('0.00')
+      }
+      
     } catch (error) {
-      console.error('Error fetching ETH balance:', error)
+      console.error('Error fetching balances:', error)
+      // Keep existing values on error
+    } finally {
+      setIsLoadingBalances(false)
     }
-  }
+  }, [])
 
   const generateNonce = () => {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
@@ -200,7 +263,7 @@ export function Navbar() {
       const { address, signature, message } = finalPayload
       setWalletAddress(address)
       setIsWalletConnected(true)
-      await fetchEthBalance(address)
+      await fetchBalances(address)
       
       toast({
         type: 'success',
@@ -223,7 +286,7 @@ export function Navbar() {
     } finally {
       setIsConnecting(false)
     }
-  }, [toast, fetchEthBalance, handleAutoVerification])
+  }, [toast, fetchBalances, handleAutoVerification])
 
 
 
@@ -231,8 +294,10 @@ export function Navbar() {
     setWalletAddress('')
     setIsWalletConnected(false)
     setEthBalance('0.0000')
+    setWldBalance('0.0000')
     setIsVerified(false)
     setIsVerifying(false)
+    setIsLoadingBalances(false)
     
     toast({
       type: 'info',
@@ -348,6 +413,7 @@ export function Navbar() {
                           </div>
                         </div>
 
+                                {/* ETH Balance */}
                                 <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                                   <Coins className="h-4 w-4 text-blue-500" />
                                   <div className="flex-1">
@@ -355,10 +421,55 @@ export function Navbar() {
                                       ETH Balance
                                     </p>
                                     <p className="text-xs text-blue-700 dark:text-blue-300">
-                                      {ethBalance} ETH
+                                      {isLoadingBalances ? (
+                                        <span className="flex items-center gap-1">
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                          Loading...
+                                        </span>
+                                      ) : (
+                                        `${ethBalance} ETH`
+                                      )}
                                     </p>
                                   </div>
                                 </div>
+
+                                {/* WLD Balance */}
+                                <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-md">
+                                  <div className="h-4 w-4 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                                    <span className="text-xs font-bold text-white">W</span>
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                                      WLD Balance
+                                    </p>
+                                    <p className="text-xs text-purple-700 dark:text-purple-300">
+                                      {isLoadingBalances ? (
+                                        <span className="flex items-center gap-1">
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                          Loading...
+                                        </span>
+                                      ) : (
+                                        `${wldBalance} WLD`
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Refresh Balances Button */}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => fetchBalances(walletAddress)}
+                                  disabled={isLoadingBalances}
+                                  className="w-full flex items-center gap-2 text-xs"
+                                >
+                                  {isLoadingBalances ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Coins className="h-3 w-3" />
+                                  )}
+                                  Refresh Balances
+                                </Button>
 
                                 {/* Verification Status */}
                                 <div className={`flex items-center gap-3 p-3 rounded-md ${
