@@ -12,7 +12,6 @@ import {
   StoreOptions,
   WalrusStorageError,
   WalrusRetrievalError,
-  WalrusNetworkError,
   WalrusCache,
   WalrusStorageEvent,
   WalrusEventHandler
@@ -96,16 +95,20 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
 
       return storeResponse;
     } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
       this.emitEvent({
         type: 'operation_failed',
         blobId: '',
         timestamp: new Date(),
-        metadata: { operation: 'store', error: error.message }
+        metadata: { operation: 'store', error: err.message }
       });
       
       throw new WalrusStorageError(
-        `Failed to store blob: ${error.message}`,
-        { originalError: error, dataSize: data.length }
+        `Failed to store blob: ${err.message}`,
+        {
+          originalError: err,
+          dataSize: typeof data === 'string' ? Buffer.byteLength(data, 'utf-8') : 'length' in data ? data.length : undefined
+        }
       );
     }
   }
@@ -146,16 +149,17 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
 
       return retrieveResponse;
     } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
       this.emitEvent({
         type: 'operation_failed',
         blobId,
         timestamp: new Date(),
-        metadata: { operation: 'retrieve', error: error.message }
+        metadata: { operation: 'retrieve', error: err.message }
       });
 
       throw new WalrusRetrievalError(
-        `Failed to retrieve blob ${blobId}: ${error.message}`,
-        { blobId, originalError: error }
+        `Failed to retrieve blob ${blobId}: ${err.message}`,
+        { blobId, originalError: err }
       );
     }
   }
@@ -176,7 +180,8 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
 
       return true;
     } catch (error) {
-      throw new WalrusStorageError(`Failed to delete blob ${blobId}: ${error.message}`);
+      const err = error instanceof Error ? error : new Error(String(error));
+      throw new WalrusStorageError(`Failed to delete blob ${blobId}: ${err.message}`);
     }
   }
 
@@ -211,7 +216,8 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
         walrusMetadata: storeResponse.metadata
       };
     } catch (error) {
-      throw new WalrusStorageError(`Failed to store fact ${fact.id}: ${error.message}`);
+      const err = error instanceof Error ? error : new Error(String(error));
+      throw new WalrusStorageError(`Failed to store fact ${fact.id}: ${err.message}`);
     }
   }
 
@@ -220,7 +226,15 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
       // In a real app, you'd maintain a mapping of factId -> blobId
       // For now, assume factId is the blobId
       const retrieveResponse = await this.retrieveBlob(factId);
-      const factContent: FactContent = JSON.parse(retrieveResponse.data.toString('utf-8'));
+      const parsed = JSON.parse(retrieveResponse.data.toString('utf-8'));
+      const factContent: FactContent = {
+        ...parsed,
+        metadata: {
+          ...parsed.metadata,
+          created: parsed.metadata?.created ? new Date(parsed.metadata.created) : new Date(),
+          updated: parsed.metadata?.updated ? new Date(parsed.metadata.updated) : new Date()
+        }
+      };
 
       return {
         factId,
@@ -228,7 +242,8 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
         walrusMetadata: retrieveResponse.metadata
       };
     } catch (error) {
-      throw new WalrusRetrievalError(`Failed to retrieve fact ${factId}: ${error.message}`);
+      const err = error instanceof Error ? error : new Error(String(error));
+      throw new WalrusRetrievalError(`Failed to retrieve fact ${factId}: ${err.message}`);
     }
   }
 
@@ -244,14 +259,15 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
         metadata: {
           ...existingFact.content.metadata,
           updated: new Date(),
-          version: existingFact.content.metadata.version + 1
+          version: (existingFact.content.metadata?.version || 0) + 1
         }
       };
 
       // Store updated fact
       return await this.storeFact(updatedFact);
     } catch (error) {
-      throw new WalrusStorageError(`Failed to update fact ${factId}: ${error.message}`);
+      const err = error instanceof Error ? error : new Error(String(error));
+      throw new WalrusStorageError(`Failed to update fact ${factId}: ${err.message}`);
     }
   }
 
@@ -273,14 +289,19 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
         walrusMetadata: storeResponse.metadata
       };
     } catch (error) {
-      throw new WalrusStorageError(`Failed to store comment ${comment.id}: ${error.message}`);
+      const err = error instanceof Error ? error : new Error(String(error));
+      throw new WalrusStorageError(`Failed to store comment ${comment.id}: ${err.message}`);
     }
   }
 
   async retrieveComment(commentId: string): Promise<ContextCommentBlob> {
     try {
       const retrieveResponse = await this.retrieveBlob(commentId);
-      const comment: ContextComment = JSON.parse(retrieveResponse.data.toString('utf-8'));
+      const parsed = JSON.parse(retrieveResponse.data.toString('utf-8'));
+      const comment: ContextComment = {
+        ...parsed,
+        created: parsed.created ? new Date(parsed.created) : new Date()
+      };
 
       return {
         commentId,
@@ -289,7 +310,8 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
         walrusMetadata: retrieveResponse.metadata
       };
     } catch (error) {
-      throw new WalrusRetrievalError(`Failed to retrieve comment ${commentId}: ${error.message}`);
+      const err = error instanceof Error ? error : new Error(String(error));
+      throw new WalrusRetrievalError(`Failed to retrieve comment ${commentId}: ${err.message}`);
     }
   }
 
