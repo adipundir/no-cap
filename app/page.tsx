@@ -9,7 +9,7 @@ export default function Home() {
       {/* HERO SECTION */}
       <main className="flex-1 flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-4xl text-center">
-          <div className="relative h-[240px] md:h-[300px] mb-4 md:mb-6">
+          <div className="relative h-[240px] md:h-[300px] mb-4 md:mb-12">
             <TextPressure
               text="NOCAP"
               flex={true}
