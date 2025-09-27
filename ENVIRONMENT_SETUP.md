@@ -1,102 +1,50 @@
-# 🔑 Environment Setup Guide
+# Environment Configuration
 
-## Required Environment Variables
+Create a `.env.local` file in your project root with the following variables:
 
-Create a `.env.local` file in your project root with the following content:
+## Required Variables
 
 ```bash
-# ===========================================
-# NOCAP - World App Configuration
-# ===========================================
-
-# World App Configuration
-NEXT_PUBLIC_WORLD_APP_ID=app_d05016525dcfdee7106146d8393399a7
+# World ID Configuration
+NEXT_PUBLIC_APP_ID=app_d05016525dcfdee7106146d8393399a7
 NEXT_PUBLIC_ACTION_ID=humanhood
+WLD_API_KEY=your_world_id_api_key_here
 
-# ===========================================
-# Configuration Details:
-# 
-# App ID: Your World App application identifier
-# Action ID: "humanhood" - for World ID verification
-# 
-# These enable World ID proof generation and verification
-# ===========================================
+# Contract Configuration
+NEXT_PUBLIC_NOCAP_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000000
 ```
 
-## 📝 Setup Steps
+## Optional Variables
 
-### 1. Create Environment File
 ```bash
-# In your project root directory
-touch .env.local
+# Custom RPC endpoints (optional)
+NEXT_PUBLIC_WORLD_CHAIN_RPC=https://worldchain-mainnet.g.alchemy.com/public
 ```
 
-### 2. Add Configuration
-Copy the environment variables above into your `.env.local` file.
+## How to Get Your World ID API Key
 
-### 3. Restart Development Server
-```bash
-# Stop your current dev server (Ctrl+C)
-# Then restart it
-npm run dev
-```
+1. Go to the [World ID Developer Portal](https://developer.worldcoin.org)
+2. Sign in with your World ID
+3. Create or select your app (`app_d05016525dcfdee7106146d8393399a7`)
+4. Navigate to the API Keys section
+5. Copy your API key and paste it as the `WLD_API_KEY` value
 
-## 🎯 What These Variables Enable
+## Setting Up Actions
 
-### **NEXT_PUBLIC_WORLD_APP_ID**
-- **Purpose**: Identifies your NOCAP app in World App
-- **Value**: `app_d05016525dcfdee7106146d8393399a7`
-- **Used for**: World ID verification requests
+Make sure you have created the following actions in the Developer Portal:
 
-### **NEXT_PUBLIC_ACTION_ID** 
-- **Purpose**: Identifies the "humanhood" verification action
-- **Value**: `humanhood`
-- **Used for**: Proof of humanity verification
+1. **`humanhood`** - For fact creation verification
+2. **`voting-action`** - For voting verification
 
-## ✅ Features Enabled
+## Contract Deployment
 
-With these environment variables configured, users can:
+Once you deploy your contract:
 
-1. **🌍 World ID Verification**: Prove their humanity using World ID
-2. **🔐 Proof of Ownership**: Verify wallet ownership for secure interactions
-3. **🛡️ Sybil Resistance**: Prevent fake accounts and spam
-4. **⚡ Gas Sponsorship**: World App covers transaction fees
-5. **🎯 Fact Verification**: Submit and verify facts with identity proofs
+1. Update `NEXT_PUBLIC_NOCAP_CONTRACT_ADDRESS` with your deployed contract address
 
-## 🚀 Testing
+## Security Notes
 
-After setting up the environment variables:
-
-1. **Start Development Server**:
-   ```bash
-   npm run dev
-   ```
-
-2. **Open in World App**: Navigate to your local development URL in World App
-
-3. **Test Wallet Connection**: Click "Connect Wallet" in the navbar
-
-4. **Test World ID**: Go to `/world` page and try "Verify Your Humanity"
-
-5. **Test Proof of Ownership**: Try to submit a fact at `/submit`
-
-## 🔧 Troubleshooting
-
-### Environment Variables Not Working?
-- Ensure `.env.local` is in the project root (same level as `package.json`)
-- Restart your development server after adding variables
-- Check that variable names match exactly (case-sensitive)
-
-### World ID Verification Failing?
-- Verify your App ID is correct: `app_d05016525dcfdee7106146d8393399a7`
-- Verify your Action ID is correct: `humanhood`
-- Ensure you're testing in World App, not a regular browser
-
-### Still Having Issues?
-- Check browser console for error messages
-- Verify World App is up to date
-- Try clearing browser cache and localStorage
-
-## 🎉 Ready to Go!
-
-Once configured, your NOCAP app will have full World ID integration with proof of ownership for secure, authenticated interactions! 🌍
+- Never commit `.env.local` to version control
+- The `WLD_API_KEY` should be kept secret (server-side only)
+- `NEXT_PUBLIC_*` variables are exposed to the client
+- Contract will work immediately once deployed and address is updated

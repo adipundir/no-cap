@@ -3,14 +3,11 @@ import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { getFactRecord, upsertFactRecord } from '@/lib/store/fact-store';
 import type { Fact } from '@/types/fact';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
-export async function GET(_request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
-  const { id } = params;
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const { id } = await params;
   const record = getFactRecord(id);
   if (!record) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -18,8 +15,11 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
   return NextResponse.json({ fact: record.fact, walrus: record.walrusMetadata });
 }
 
-export async function PUT(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
-  const { id } = params;
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  const { id } = await params;
   const record = getFactRecord(id);
   if (!record) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -42,7 +42,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
       fact: updatedFact,
       walrusBlobId: updatedBlob.walrusMetadata.blobId,
       walrusMetadata: updatedBlob.walrusMetadata,
-      availabilityCertificate: updatedBlob.availabilityCertificate,
     });
 
     return NextResponse.json({ fact: updatedFact, walrus: updatedBlob.walrusMetadata });

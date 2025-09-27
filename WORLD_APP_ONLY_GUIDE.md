@@ -162,7 +162,7 @@ NEXT_PUBLIC_ACTION_ID=your_action_id_here
 ### **3. Start Using**
 - World ID verification
 - Fact checking with gas sponsorship
-- PYUSD rewards (when implemented)
+- ETH staking and rewards
 
 ## 🔮 Future Considerations
 
