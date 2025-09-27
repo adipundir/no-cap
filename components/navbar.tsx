@@ -49,6 +49,13 @@ export default function Navbar() {
       setEthBalance(balances.eth)
       setWldBalance(balances.wld)
 
+      // Show hackathon integration status
+      if (balances.totalValueUSD > 0) {
+        console.info('🏆 1inch API integration active for hackathon track')
+      } else if (balances.error?.includes('fallback')) {
+        console.info('⚠️ Using fallback RPC - add ONEINCH_API_KEY for hackathon features')
+      }
+
     } catch (error) {
       console.error('Failed to fetch balances:', error)
       setEthBalance('0.0000')

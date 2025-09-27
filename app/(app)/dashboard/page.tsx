@@ -1,10 +1,24 @@
+'use client'
+
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import HackathonPortfolio from "@/components/hackathon-portfolio";
 
 export default function DashboardPage() {
+  const [walletAddress, setWalletAddress] = useState<string>('')
+
+  useEffect(() => {
+    // Get wallet address from localStorage or context
+    const savedAddress = localStorage.getItem('wallet_address')
+    if (savedAddress) {
+      setWalletAddress(savedAddress)
+    }
+  }, [])
+
   return (
     <div className="min-h-screen">
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-8 lg:grid-cols-12">
@@ -67,6 +81,9 @@ export default function DashboardPage() {
               </Card>
             ))}
           </div>
+
+          {/* Hackathon Portfolio */}
+          <HackathonPortfolio walletAddress={walletAddress} />
 
           {/* Activity */}
           <Card variant="module" id="activity" className="p-0">
