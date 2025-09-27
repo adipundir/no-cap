@@ -18,7 +18,6 @@ export default function SubmitPage() {
   const isValid =
     title.trim().length > 10 &&
     summary.trim().length > 20 &&
-    stake > 0 &&
     durationHrs >= 28 &&
     durationHrs <= 60;
 
@@ -73,7 +72,7 @@ export default function SubmitPage() {
       <div className="mx-auto max-w-3xl px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Create a fact</h1>
-          <Badge variant="outline">Stake with PYUD</Badge>
+          <Badge variant="outline">No stake required</Badge>
         </div>
 
         <Card variant="module" className="p-0">
@@ -99,17 +98,17 @@ export default function SubmitPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="md:col-span-1">
-                <label className="mb-1 block text-sm font-medium">Stake (PYUD)</label>
+                <label className="mb-1 block text-sm font-medium">Stake (PYUD) <span className="text-xs text-muted-foreground">- Optional</span></label>
                 <input
                   type="number"
-                  min={1}
+                  min={0}
                   className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
                   value={stake}
                   onChange={(e) => setStake(parseInt(e.target.value || "0", 10))}
                 />
               </div>
               <div className="md:col-span-2 text-sm text-muted-foreground">
-                Your stake helps prevent spam. If the outcome is True, you earn back stake + rewards. If False, stake is redistributed to correct reviewers.
+                Optional stake to show confidence in your claim. Higher stakes may increase visibility and credibility.
               </div>
             </div>
 
