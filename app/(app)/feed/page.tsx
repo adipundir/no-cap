@@ -41,7 +41,11 @@ export default function FeedPage() {
           throw new Error("Failed to fetch facts");
         }
         const data = await response.json();
-        setFacts(data.facts || []);
+        // Only show facts that came from Walrus (have blob id)
+        const fromWalrus = Array.isArray(data.facts)
+          ? data.facts.filter((f: Fact) => Boolean(f.walrusBlobId))
+          : [];
+        setFacts(fromWalrus);
       } catch (error) {
         console.error("Failed to load facts:", error);
       }
@@ -52,7 +56,10 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-5xl px-4 pt-3 pb-6">
+        <div className="mb-4 flex justify-center">
+          <h1 className="text-4xl md:text-5xl font-light tracking-tight leading-none text-center">Feed</h1>
+        </div>
         {/* Feed list */}
         <div className="space-y-4">
           {facts.map((f) => (

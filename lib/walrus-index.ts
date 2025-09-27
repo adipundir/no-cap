@@ -417,9 +417,9 @@ export class WalrusIndexManager {
   async initialize(): Promise<void> {
     await this.factIndex.initialize();
     
-    // Auto-discover facts from Walrus if index is empty
-    if (this.factIndex.getAllFactIds().size === 0) {
-      console.log('📂 Index is empty, attempting to discover facts from Walrus...');
+    // Optional discovery only when explicitly enabled
+    if (process.env.WALRUS_DISCOVERY === 'true' && this.factIndex.getAllFactIds().size === 0) {
+      console.log('📂 Index is empty, discovery enabled. Attempting to discover facts from Walrus...');
       await this.discoverAndIndexFactsFromWalrus();
     }
   }
