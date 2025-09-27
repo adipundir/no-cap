@@ -73,9 +73,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Perform search
     const results = await indexManager.searchFacts(searchQuery);
 
-    // Return results
+    // Return results filtered to only Walrus-backed facts
     return NextResponse.json({
-      facts: results.facts,
+      facts: results.facts.filter((f) => Boolean(f.blobId)),
       totalCount: results.totalCount,
       searchTime: results.searchTime,
       query: searchQuery
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Return results with additional metadata
     return NextResponse.json({
-      facts: results.facts,
+      facts: results.facts.filter((f) => Boolean(f.blobId)),
       totalCount: results.totalCount,
       searchTime: results.searchTime,
       query: searchQuery,

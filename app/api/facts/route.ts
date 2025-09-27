@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { getWalrusIndexManager } from '@/lib/walrus-index';
 import type { Fact, FullFact } from '@/types/fact';
-import {
-  upsertFactRecord,
-  listFactRecords,
-  getFactRecord
-} from '@/lib/store/fact-store';
-import { ensureSeedFacts } from '@/lib/seed/facts';
 
 /**
  * GET /api/facts
@@ -19,9 +13,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const limit = parseInt(searchParams.get('limit') || '10');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Ensure seed facts exist (one-time operation)
-    await ensureSeedFacts();
-    
     // Initialize Walrus and get index manager
     const walrus = initializeWalrusFromEnv();
     await walrus.initialize();
@@ -56,15 +47,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   } catch (error) {
     console.error('Failed to retrieve facts from Walrus:', error);
-    
-    // Fallback to local cache if Walrus fails
-    await ensureSeedFacts();
-    const records = listFactRecords();
-    return NextResponse.json({ 
-      facts: records.map((record) => record.fact),
-      totalCount: records.length,
-      warning: 'Using local cache due to Walrus error'
-    });
+    return NextResponse.json({ facts: [], totalCount: 0 }, { status: 200 });
   }
 }
 
@@ -110,11 +93,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       metadata: body.metadata,
     };
 
-    upsertFactRecord({
-      fact,
-      walrusBlobId: storeResult.walrusMetadata.blobId,
-      walrusMetadata: storeResult.walrusMetadata,
-    });
+    // No local cache writes; index manager will take care of indexing
 
     return NextResponse.json({ fact }, { status: 201 });
   } catch (error) {
