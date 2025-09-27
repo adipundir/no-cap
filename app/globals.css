@@ -56,44 +56,52 @@
   }
 }
 
-/* Sonner Toast Styling */
+/* Sonner Toast Styling - Fixed Transparency */
 [data-sonner-toaster] {
-  --normal-bg: hsl(var(--background));
-  --normal-border: hsl(var(--border));
-  --normal-text: hsl(var(--foreground));
-  --success-bg: hsl(var(--background));
-  --success-border: hsl(142.1 76.2% 36.3%);
-  --success-text: hsl(var(--foreground));
-  --error-bg: hsl(var(--background));
-  --error-border: hsl(var(--destructive));
-  --error-text: hsl(var(--foreground));
+  --normal-bg: #ffffff;
+  --normal-border: #e4e4e7;
+  --normal-text: #0a0a0a;
+  --success-bg: #ffffff;
+  --success-border: #22c55e;
+  --success-text: #0a0a0a;
+  --error-bg: #ffffff;
+  --error-border: #ef4444;
+  --error-text: #0a0a0a;
 }
 
 [data-sonner-toast] {
-  background: hsl(var(--background)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-  color: hsl(var(--foreground)) !important;
+  background: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+  color: #0a0a0a !important;
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important;
+  opacity: 1 !important;
 }
 
 [data-sonner-toast][data-type="success"] {
-  border-color: hsl(142.1 76.2% 36.3%) !important;
+  border-color: #22c55e !important;
 }
 
 [data-sonner-toast][data-type="error"] {
-  border-color: hsl(var(--destructive)) !important;
+  border-color: #ef4444 !important;
 }
 
 .dark [data-sonner-toaster] {
-  --normal-bg: hsl(var(--background));
-  --normal-border: hsl(var(--border));
-  --normal-text: hsl(var(--foreground));
-  --success-bg: hsl(var(--background));
-  --success-border: hsl(142.1 70.6% 45.3%);
-  --success-text: hsl(var(--foreground));
-  --error-bg: hsl(var(--background));
-  --error-border: hsl(var(--destructive));
-  --error-text: hsl(var(--foreground));
+  --normal-bg: #0a0a0a;
+  --normal-border: #27272a;
+  --normal-text: #fafafa;
+  --success-bg: #0a0a0a;
+  --success-border: #22c55e;
+  --success-text: #fafafa;
+  --error-bg: #0a0a0a;
+  --error-border: #ef4444;
+  --error-text: #fafafa;
+}
+
+.dark [data-sonner-toast] {
+  background: #0a0a0a !important;
+  border: 1px solid #27272a !important;
+  color: #fafafa !important;
+  opacity: 1 !important;
 }
 
 /* Custom styles for the app */

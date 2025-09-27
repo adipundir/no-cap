@@ -16,12 +16,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
       expand={true}
       toastOptions={{
         style: {
-          background: 'hsl(var(--background))',
-          color: 'hsl(var(--foreground))',
-          border: '1px solid hsl(var(--border))',
+          background: theme === 'dark' ? '#0a0a0a' : '#ffffff',
+          color: theme === 'dark' ? '#fafafa' : '#0a0a0a',
+          border: `1px solid ${theme === 'dark' ? '#27272a' : '#e4e4e7'}`,
+          boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
         },
-        className: 'group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg',
-        descriptionClassName: 'group-[.toast]:text-muted-foreground',
+        className: 'group toast',
+        descriptionClassName: 'text-muted-foreground',
       }}
       {...props}
     />

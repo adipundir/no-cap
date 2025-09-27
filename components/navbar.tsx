@@ -97,21 +97,45 @@ export default function Navbar() {
 
   // Check wallet connection status on mount
   useEffect(() => {
-    if (typeof window !== 'undefined' && MiniKit.isInstalled()) {
-      // Check if already connected
-      // This would need to be implemented based on MiniKit's API
+    if (typeof window !== 'undefined') {
+      console.log('🌐 Window loaded, checking MiniKit...')
+      
+      // Check if we're in World App
+      const isWorldApp = typeof window !== 'undefined' && 
+        (window.navigator.userAgent.includes('WorldApp') || 
+         window.location.hostname.includes('worldapp') ||
+         MiniKit.isInstalled())
+      
+      console.log('🌍 Is World App?', isWorldApp)
+      console.log('📱 User Agent:', window.navigator.userAgent)
+      console.log('🔧 MiniKit installed?', MiniKit.isInstalled())
+      
+      if (!isWorldApp) {
+        toast('For best experience, open this app in World App', {
+          duration: 5000,
+        })
+      }
     }
   }, [])
 
   const handleWalletConnect = useCallback(async () => {
+    console.log('🔄 Starting wallet connection...')
+    toast('Starting wallet connection...')
+
+    // Check if MiniKit is available
     if (!MiniKit.isInstalled()) {
+      console.error('❌ MiniKit not installed')
       toast.error('Please open this app in World App to connect your wallet')
       return
     }
 
+    console.log('✅ MiniKit is installed')
+    toast('MiniKit detected, preparing connection...')
+
     setIsConnecting(true)
     try {
       const nonce = Math.floor(Math.random() * 1000000).toString()
+      console.log('🎲 Generated nonce:', nonce)
       
       const walletAuthPayload: WalletAuthInput = {
         nonce,
@@ -120,28 +144,55 @@ export default function Navbar() {
         notBefore: new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
       }
 
+      console.log('📝 Wallet auth payload:', walletAuthPayload)
+      toast('Requesting wallet authentication...')
+
+      console.log('🔐 Calling MiniKit.commandsAsync.walletAuth...')
       const { finalPayload } = await MiniKit.commandsAsync.walletAuth(walletAuthPayload)
       
+      console.log('📦 Received payload:', finalPayload)
+
       if (finalPayload.status === 'error') {
+        console.error('❌ Wallet auth error:', finalPayload.error_code)
         throw new Error(finalPayload.error_code || 'Wallet connection failed')
       }
 
+      if (!finalPayload.address) {
+        console.error('❌ No address in payload:', finalPayload)
+        throw new Error('No wallet address received')
+      }
+
       const { address } = finalPayload
+      console.log('✅ Wallet connected:', address)
+      toast.success(`Wallet connected: ${address.slice(0, 6)}...${address.slice(-4)}`)
       
       setIsWalletConnected(true)
       setWalletAddress(address)
       setWalletConnection(address)
       
       // Fetch balances
+      console.log('💰 Fetching balances...')
+      toast('Fetching wallet balances...')
       await fetchBalances(address)
       
       toast.success('Wallet connected successfully!')
       
-    } catch (error) {
-      console.error('Wallet connection error:', error)
-      toast.error('Failed to connect wallet. Please try again.')
+    } catch (error: any) {
+      console.error('❌ Wallet connection error:', error)
+      
+      // More specific error messages
+      if (error.message?.includes('User rejected')) {
+        toast.error('Connection cancelled by user')
+      } else if (error.message?.includes('timeout')) {
+        toast.error('Connection timed out. Please try again.')
+      } else if (error.message?.includes('network')) {
+        toast.error('Network error. Please check your connection.')
+      } else {
+        toast.error(`Connection failed: ${error.message || 'Unknown error'}`)
+      }
     } finally {
       setIsConnecting(false)
+      console.log('🏁 Wallet connection process completed')
     }
   }, [fetchBalances, setWalletConnection])
 
