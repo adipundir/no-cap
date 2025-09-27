@@ -134,8 +134,10 @@ export default function Navbar() {
 
     setIsConnecting(true)
     try {
+      // Generate a secure nonce
       const nonce = Math.floor(Math.random() * 1000000).toString()
       console.log('🎲 Generated nonce:', nonce)
+      toast('Generated secure nonce...')
       
       const walletAuthPayload: WalletAuthInput = {
         nonce,
@@ -148,7 +150,16 @@ export default function Navbar() {
       toast('Requesting wallet authentication...')
 
       console.log('🔐 Calling MiniKit.commandsAsync.walletAuth...')
-      const { finalPayload } = await MiniKit.commandsAsync.walletAuth(walletAuthPayload)
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection timeout after 30 seconds')), 30000)
+      })
+      
+      const authPromise = MiniKit.commandsAsync.walletAuth(walletAuthPayload)
+      
+      toast('Waiting for World App response...')
+      const { finalPayload } = await Promise.race([authPromise, timeoutPromise]) as any
       
       console.log('📦 Received payload:', finalPayload)
 
@@ -181,14 +192,17 @@ export default function Navbar() {
       console.error('❌ Wallet connection error:', error)
       
       // More specific error messages
-      if (error.message?.includes('User rejected')) {
+      if (error.message?.includes('User rejected') || error.message?.includes('cancelled')) {
         toast.error('Connection cancelled by user')
-      } else if (error.message?.includes('timeout')) {
-        toast.error('Connection timed out. Please try again.')
+      } else if (error.message?.includes('timeout') || error.message?.includes('Connection timeout')) {
+        toast.error('Connection timed out. Try refreshing the app or check your World App connection.')
       } else if (error.message?.includes('network')) {
         toast.error('Network error. Please check your connection.')
+      } else if (error.message?.includes('not supported')) {
+        toast.error('Wallet connection not supported. Please update World App.')
       } else {
         toast.error(`Connection failed: ${error.message || 'Unknown error'}`)
+        toast('Try refreshing the app or restarting World App')
       }
     } finally {
       setIsConnecting(false)
