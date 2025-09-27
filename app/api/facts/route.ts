@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
+import { getWalrusIndexManager } from '@/lib/walrus-index';
 import type { Fact, FullFact } from '@/types/fact';
 import {
   upsertFactRecord,
@@ -10,12 +11,61 @@ import { ensureSeedFacts } from '@/lib/seed/facts';
 
 /**
  * GET /api/facts
- * Returns list of facts with Walrus metadata
+ * Returns list of facts from Walrus with indexed metadata
  */
-export async function GET(): Promise<NextResponse> {
-  await ensureSeedFacts();
-  const records = listFactRecords();
-  return NextResponse.json({ facts: records.map((record) => record.fact) });
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  try {
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const offset = parseInt(searchParams.get('offset') || '0');
+
+    // Ensure seed facts exist (one-time operation)
+    await ensureSeedFacts();
+    
+    // Initialize Walrus and get index manager
+    const walrus = initializeWalrusFromEnv();
+    await walrus.initialize();
+    
+    const indexManager = getWalrusIndexManager(walrus.storage);
+    await indexManager.initialize();
+
+    // Get facts from Walrus index (not local cache)
+    const { facts, totalCount } = await indexManager.listFacts(limit, offset);
+
+    return NextResponse.json({ 
+      facts: facts.map(fact => ({
+        id: fact.id,
+        title: fact.title,
+        summary: fact.summary,
+        status: fact.status,
+        votes: Math.floor(Math.random() * 1000), // Mock votes for now
+        comments: Math.floor(Math.random() * 200), // Mock comments for now
+        author: fact.metadata.author,
+        updated: fact.metadata.updated.toISOString(),
+        walrusBlobId: fact.blobId,
+        metadata: {
+          created: fact.metadata.created,
+          lastModified: fact.metadata.updated,
+          version: fact.metadata.version,
+          contentType: 'text/plain' as const,
+          tags: fact.tags.map(tag => tag.name)
+        }
+      } as Fact)),
+      totalCount 
+    });
+
+  } catch (error) {
+    console.error('Failed to retrieve facts from Walrus:', error);
+    
+    // Fallback to local cache if Walrus fails
+    await ensureSeedFacts();
+    const records = listFactRecords();
+    return NextResponse.json({ 
+      facts: records.map((record) => record.fact),
+      totalCount: records.length,
+      warning: 'Using local cache due to Walrus error'
+    });
+  }
 }
 
 /**
