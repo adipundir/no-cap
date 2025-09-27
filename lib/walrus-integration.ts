@@ -71,7 +71,7 @@ export class WalrusIntegrationImpl implements WalrusIntegration {
     
     try {
       // Attempt a simple operation to test connectivity
-      const testData = Buffer.from('health-check-test', 'utf-8');
+      const testData = new Uint8Array(Buffer.from('health-check-test', 'utf-8'));
       await this.storage.storeBlob(testData, { 
         mimeType: 'text/plain',
         metadata: { purpose: 'health-check' }
