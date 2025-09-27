@@ -6,9 +6,9 @@ export default function Home() {
   return (
     <div className="page-bg min-h-screen flex flex-col select-none" style={{ userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
       {/* HERO SECTION */}
-      <main className="flex flex-col items-center justify-center px-4 py-8">
-        <div className="w-full max-w-sm text-center">
-          <div className="relative h-[180px] mb-4">
+      <main className="flex flex-col items-center justify-center px-4 py-6 md:py-12">
+        <div className="w-full max-w-sm md:max-w-4xl text-center">
+          <div className="relative h-[160px] md:h-[240px] mb-3">
             <TextPressure
               text="NOCAP"
               flex={true}
@@ -23,17 +23,17 @@ export default function Home() {
             />
           </div>
           
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground px-4">
+          <div className="space-y-3 md:space-y-5">
+            <p className="text-sm md:text-lg text-muted-foreground max-w-2xl mx-auto px-2 md:px-0">
               Community-driven fact verification. Anonymous reviews. On-chain transparency.
             </p>
             
-            <Button size="lg" className="px-6 py-2" asChild>
+            <Button size="lg" className="px-6 py-2 md:px-8 md:py-3 text-base md:text-lg" asChild>
               <a href="/feed">Launch App</a>
             </Button>
 
             {/* CurvedLoop Animation */}
-            <div className="mt-6">
+            <div className="">
               <CurvedLoop 
                 marqueeText="Verify ✦ Facts ✦ Earn ✦ Rewards ✦ Stay ✦ Anonymous ✦"
                 speed={2}

@@ -27,8 +27,8 @@ export default function RootLayout({
       <body className="antialiased">
         <MiniKitProvider>
           <ThemeProvider>
-            {children}
             <Toaster />
+            {children}
           </ThemeProvider>
         </MiniKitProvider>
       </body>

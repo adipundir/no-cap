@@ -81,7 +81,7 @@ export const NOCAP_ABI = [
           {"internalType": "bool", "name": "outcome", "type": "bool"},
           {"internalType": "uint256", "name": "totalRewards", "type": "uint256"}
         ],
-        "internalType": "struct NOCAPNoVerification.Fact",
+        "internalType": "struct NOCAPFactChecker.Fact",
         "name": "fact",
         "type": "tuple"
       }
@@ -151,7 +151,7 @@ export const NOCAP_ABI = [
           {"internalType": "bool", "name": "outcome", "type": "bool"},
           {"internalType": "uint256", "name": "totalRewards", "type": "uint256"}
         ],
-        "internalType": "struct NOCAPNoVerification.Fact[]",
+        "internalType": "struct NOCAPFactChecker.Fact[]",
         "name": "factsArray",
         "type": "tuple[]"
       }
