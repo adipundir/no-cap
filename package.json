@@ -16,6 +16,7 @@
     "@radix-ui/themes": "^3.2.1",
     "@worldcoin/minikit-js": "^1.7.1",
     "@worldcoin/minikit-react": "^1.7.1",
+    "axios": "^1.12.2",
     "clsx": "^2.1.1",
     "gsap": "^3.13.0",
     "lucide-react": "^0.468.0",

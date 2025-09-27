@@ -6,12 +6,14 @@ import {
   listFactRecords,
   getFactRecord
 } from '@/lib/store/fact-store';
+import { ensureSeedFacts } from '@/lib/seed/facts';
 
 /**
  * GET /api/facts
  * Returns list of facts with Walrus metadata
  */
 export async function GET(): Promise<NextResponse> {
+  await ensureSeedFacts();
   const records = listFactRecords();
   return NextResponse.json({ facts: records.map((record) => record.fact) });
 }

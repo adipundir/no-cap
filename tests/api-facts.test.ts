@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { upsertFactRecord, clearFactRecords, listFactRecords } from '@/lib/store/fact-store';
 import { GET as listFacts, POST as createFact } from '@/app/api/facts/route';
+import { ensureSeedFacts } from '@/lib/seed/facts';
 
 vi.mock('@/lib/walrus-integration', () => {
   const storeFact = vi.fn(async (fact: any) => ({
@@ -31,6 +32,10 @@ describe('Facts API', () => {
     clearFactRecords();
     vi.mocked(initializeWalrusFromEnv).mockClear();
   });
+
+  vi.mock('@/lib/seed/facts', () => ({
+    ensureSeedFacts: vi.fn(async () => {}),
+  }));
 
   it('POST /api/facts stores fact and returns metadata', async () => {
     const payload = {
