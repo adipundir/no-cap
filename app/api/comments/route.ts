@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
-import type { ContextComment } from '@/types/fact';
+import type { ContextComment } from '@/types/walrus';
 import { upsertCommentRecord, listCommentsForFact } from '@/lib/store/comment-store';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       walrusBlobId: storeResult.walrusMetadata.blobId,
       walrusMetadata: storeResult.walrusMetadata,
-      availabilityCertificate: storeResult.walrusMetadata.blobId,
+      availabilityCertificate: storeResult.availabilityCertificate,
     });
 
     return NextResponse.json({

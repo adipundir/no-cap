@@ -26,6 +26,9 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
   private config: WalrusStorageConfig;
   private cache?: WalrusCache;
   private eventHandlers: Map<string, WalrusEventHandler[]> = new Map();
+  private factBlobIndex: Map<string, string> = new Map(); // factId -> blobId
+  private commentBlobIndex: Map<string, string> = new Map(); // commentId -> blobId
+  private commentsByFact: Map<string, Set<string>> = new Map(); // factId -> commentIds
 
   constructor(config: WalrusStorageConfig, cache?: WalrusCache) {
     this.config = config;
@@ -172,6 +175,22 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
         await this.cache.delete(blobId);
       }
 
+      // Remove from indices if present
+      for (const [factId, storedBlobId] of this.factBlobIndex.entries()) {
+        if (storedBlobId === blobId) {
+          this.factBlobIndex.delete(factId);
+          break;
+        }
+      }
+
+      if (this.commentBlobIndex.has(blobId)) {
+        this.commentBlobIndex.delete(blobId);
+      }
+
+      for (const commentSet of this.commentsByFact.values()) {
+        commentSet.delete(blobId);
+      }
+
       this.emitEvent({
         type: 'blob_deleted',
         blobId,
@@ -210,6 +229,8 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
         metadata: { type: 'fact', factId: fact.id }
       });
 
+      this.factBlobIndex.set(fact.id, storeResponse.metadata.blobId);
+
       return {
         factId: fact.id,
         content: fact,
@@ -223,9 +244,8 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
 
   async retrieveFact(factId: string): Promise<FactContentBlob> {
     try {
-      // In a real app, you'd maintain a mapping of factId -> blobId
-      // For now, assume factId is the blobId
-      const retrieveResponse = await this.retrieveBlob(factId);
+      const mappedBlobId = this.factBlobIndex.get(factId) || factId;
+      const retrieveResponse = await this.retrieveBlob(mappedBlobId);
       const parsed = JSON.parse(retrieveResponse.data.toString('utf-8'));
       const factContent: FactContent = {
         ...parsed,
@@ -282,6 +302,12 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
         metadata: { type: 'comment', commentId: comment.id, factId: comment.factId }
       });
 
+      this.commentBlobIndex.set(comment.id, storeResponse.metadata.blobId);
+      if (!this.commentsByFact.has(comment.factId)) {
+        this.commentsByFact.set(comment.factId, new Set());
+      }
+      this.commentsByFact.get(comment.factId)!.add(comment.id);
+
       return {
         commentId: comment.id,
         factId: comment.factId,
@@ -296,7 +322,8 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
 
   async retrieveComment(commentId: string): Promise<ContextCommentBlob> {
     try {
-      const retrieveResponse = await this.retrieveBlob(commentId);
+      const mappedBlobId = this.commentBlobIndex.get(commentId) || commentId;
+      const retrieveResponse = await this.retrieveBlob(mappedBlobId);
       const parsed = JSON.parse(retrieveResponse.data.toString('utf-8'));
       const comment: ContextComment = {
         ...parsed,
@@ -316,9 +343,26 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
   }
 
   async retrieveFactComments(factId: string): Promise<ContextCommentBlob[]> {
-    // In a real implementation, you'd maintain an index of factId -> commentIds
-    // This is a placeholder that would need proper indexing
-    throw new Error('retrieveFactComments requires proper indexing implementation');
+    const commentIds = this.commentsByFact.get(factId);
+    if (!commentIds || commentIds.size === 0) {
+      return [];
+    }
+
+    const results = await Promise.allSettled(
+      Array.from(commentIds).map(async (commentId) => {
+        try {
+          return await this.retrieveComment(commentId);
+        } catch (error) {
+          console.error(`Failed to retrieve comment ${commentId}:`, error);
+          return null;
+        }
+      })
+    );
+
+    return results
+      .filter((result): result is PromiseFulfilledResult<ContextCommentBlob | null> => result.status === 'fulfilled')
+      .map((result) => result.value)
+      .filter(Boolean) as ContextCommentBlob[];
   }
 
   /**

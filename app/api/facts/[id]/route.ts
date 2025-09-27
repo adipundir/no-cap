@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { getFactRecord, upsertFactRecord } from '@/lib/store/fact-store';
+import type { Fact } from '@/types/fact';
 
 interface RouteParams {
   params: {
@@ -29,16 +30,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
     const walrus = initializeWalrusFromEnv();
     await walrus.initialize();
 
-    const updatedBlob = await walrus.storage.updateFact(record.fact.id, {
-      ...record.fact,
-      ...updates,
-      metadata: {
-        ...(record.fact.metadata || updates.metadata),
-        updated: new Date(),
-      },
-    });
-
-    const updatedFact = {
+    const updatedBlob = await walrus.storage.updateFact(record.fact.id, updates);
+    const updatedFact: Fact = {
       ...record.fact,
       ...updates,
       metadata: updatedBlob.content.metadata,
@@ -49,7 +42,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
       fact: updatedFact,
       walrusBlobId: updatedBlob.walrusMetadata.blobId,
       walrusMetadata: updatedBlob.walrusMetadata,
-      availabilityCertificate: updatedBlob.walrusMetadata.blobId,
+      availabilityCertificate: updatedBlob.availabilityCertificate,
     });
 
     return NextResponse.json({ fact: updatedFact, walrus: updatedBlob.walrusMetadata });
