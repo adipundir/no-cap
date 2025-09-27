@@ -119,47 +119,30 @@ export default function Navbar() {
   }, [])
 
   const handleWalletConnect = useCallback(async () => {
-    console.log('🔄 Starting wallet connection...')
-    toast('Starting wallet connection...')
-
     // Check if MiniKit is available
     if (!MiniKit.isInstalled()) {
-      console.error('❌ MiniKit not installed')
       toast.error('Please open this app in World App to connect your wallet')
       return
     }
 
-    console.log('✅ MiniKit is installed')
-    toast('MiniKit detected, preparing connection...')
-
     setIsConnecting(true)
     try {
       // Get secure nonce from server
-      console.log('🔐 Fetching secure nonce from server...')
-      toast('Fetching secure nonce...')
-      
       const nonceResponse = await fetch('/api/nonce')
       if (!nonceResponse.ok) {
         throw new Error('Failed to fetch nonce from server')
       }
       
       const { nonce } = await nonceResponse.json()
-      console.log('🎲 Received nonce from server:', nonce)
-      toast('Nonce received, preparing authentication...')
       
       const walletAuthPayload: WalletAuthInput = {
         nonce,
         statement: 'Connect to NOCAP for community-driven fact verification on World Chain',
         expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
         notBefore: new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
-        requestId: Date.now().toString(), // Add requestId as recommended
+        requestId: Date.now().toString(),
       }
 
-      console.log('📝 Wallet auth payload:', walletAuthPayload)
-      toast('Requesting wallet authentication...')
-
-      console.log('🔐 Calling MiniKit.commandsAsync.walletAuth...')
-      
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Connection timeout after 30 seconds')), 30000)
@@ -167,34 +150,24 @@ export default function Navbar() {
       
       const authPromise = MiniKit.commandsAsync.walletAuth(walletAuthPayload)
       
-      toast('Waiting for World App response...')
       // Properly destructure both commandPayload and finalPayload as per docs
       const { commandPayload, finalPayload } = await Promise.race([authPromise, timeoutPromise]) as any
-      
-      console.log('📦 Received commandPayload:', commandPayload)
-      console.log('📦 Received finalPayload:', finalPayload)
 
       if (finalPayload.status === 'error') {
-        console.error('❌ Wallet auth error:', finalPayload.error_code)
         throw new Error(finalPayload.error_code || 'Wallet connection failed')
       }
 
       if (!finalPayload.address) {
-        console.error('❌ No address in payload:', finalPayload)
         throw new Error('No wallet address received')
       }
 
       const { address } = finalPayload
-      console.log('✅ Wallet connected:', address)
-      toast.success(`Wallet connected: ${address.slice(0, 6)}...${address.slice(-4)}`)
       
       setIsWalletConnected(true)
       setWalletAddress(address)
       setWalletConnection(address)
       
       // Fetch balances
-      console.log('💰 Fetching balances...')
-      toast('Fetching wallet balances...')
       await fetchBalances(address)
       
       toast.success('Wallet connected successfully!')
@@ -212,8 +185,7 @@ export default function Navbar() {
       } else if (error.message?.includes('not supported')) {
         toast.error('Wallet connection not supported. Please update World App.')
       } else {
-        toast.error(`Connection failed: ${error.message || 'Unknown error'}`)
-        toast('Try refreshing the app or restarting World App')
+        toast.error(`Connection failed: ${error.message || 'Unknown error'}. Try refreshing the app or restarting World App.`)
       }
     } finally {
       setIsConnecting(false)
@@ -327,16 +299,12 @@ export default function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="flex items-center gap-2">
                     <Wallet className="h-4 w-4" />
-                    <div className="hidden sm:flex sm:flex-col sm:items-start">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono">
-                          {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-                        </span>
-                        <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                          Connected
-                        </Badge>
-                      </div>
-                    </div>
+                    <span className="text-xs font-mono">
+                      {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                    </span>
+                    <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hidden sm:inline-flex">
+                      Connected
+                    </Badge>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80">
