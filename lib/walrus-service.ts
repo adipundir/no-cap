@@ -1,24 +1,6 @@
 // Walrus Storage Service for NOCAP
-// Note: Using mock implementation for build compatibility
-// import { WalrusSDK } from '@hibernuts/walrus-sdk'
-
-// Mock Walrus SDK for build compatibility
-class MockWalrusSDK {
-  constructor(config: any) {}
-  
-  async storeBlob(data: Buffer | string): Promise<{ id: string; hash: string; size: number }> {
-    const id = Math.random().toString(36).substring(2, 15)
-    return {
-      id,
-      hash: id,
-      size: Buffer.isBuffer(data) ? data.length : Buffer.from(data).length
-    }
-  }
-  
-  async getBlob(blobId: string): Promise<Buffer> {
-    return Buffer.from('{"mock": "data"}')
-  }
-}
+// Using real Walrus SDK from @mysten/walrus
+import { WalrusClient, TESTNET_WALRUS_PACKAGE_CONFIG } from '@mysten/walrus'
 
 // Walrus configuration for NOCAP
 const WALRUS_CONFIG = {
@@ -102,20 +84,16 @@ export interface WalrusComment {
  * Handles all interactions with Walrus for content storage
  */
 export class NOCAPWalrusService {
-  private static walrusService: MockWalrusSDK
+  private static walrusClient: WalrusClient
 
   /**
    * Initialize Walrus service
    */
   static initialize() {
-    if (!this.walrusService) {
-      this.walrusService = new MockWalrusSDK({
-        publisher: WALRUS_CONFIG.publisherUrl,
-        aggregator: WALRUS_CONFIG.aggregatorUrl,
-        apiUrl: WALRUS_CONFIG.aggregatorUrl, // Use aggregator as API URL
-      })
+    if (!this.walrusClient) {
+      this.walrusClient = new WalrusClient(TESTNET_WALRUS_PACKAGE_CONFIG)
     }
-    return this.walrusService
+    return this.walrusClient
   }
 
   /**
@@ -135,23 +113,24 @@ export class NOCAPWalrusService {
         throw new Error(`Content too large: ${contentSize} bytes (max: ${WALRUS_CONFIG.maxBlobSize})`)
       }
       
-      // Store on Walrus
+      // Store on Walrus using real SDK
       const jsonData = JSON.stringify(factContent, null, 2)
-      const buffer = Buffer.from(jsonData, 'utf-8')
+      const blob = new Uint8Array(Buffer.from(jsonData, 'utf-8'))
       
-      const result = await walrus.storeBlob(buffer)
+      const result = await walrus.writeBlob(blob)
       
-      if (!result.id) {
+      if (!result.blobId) {
         throw new Error('Failed to get blob ID from Walrus')
       }
       
-      const blobId = result.id
+      const blobId = result.blobId
       
       console.log('Fact stored on Walrus:', {
         blobId: blobId,
         factId: factContent.factId,
         title: factContent.title,
-        size: contentSize
+        size: contentSize,
+        certificate: result.certificate
       })
       
       return blobId
@@ -168,12 +147,13 @@ export class NOCAPWalrusService {
     try {
       const walrus = this.initialize()
       
-      const blob = await walrus.getBlob(blobId)
-      if (!blob) {
+      const result = await walrus.getBlob(blobId)
+      if (!result) {
         throw new Error('Blob not found on Walrus')
       }
       
-      const text = blob.toString('utf-8')
+      // Convert Uint8Array to string
+      const text = new TextDecoder().decode(result)
       const factContent: WalrusFactContent = JSON.parse(text)
       
       // Verify content integrity
@@ -240,10 +220,11 @@ export class NOCAPWalrusService {
         throw new Error(`File too large: ${file.size} bytes (max: ${WALRUS_CONFIG.maxBlobSize})`)
       }
       
-      const buffer = Buffer.from(await file.arrayBuffer())
-      const result = await walrus.storeBlob(buffer)
+      const arrayBuffer = await file.arrayBuffer()
+      const blob = new Uint8Array(arrayBuffer)
+      const result = await walrus.writeBlob(blob)
       
-      if (!result.id) {
+      if (!result.blobId) {
         throw new Error('Failed to get blob ID for media file')
       }
       
@@ -255,7 +236,7 @@ export class NOCAPWalrusService {
       
       return {
         type: mediaType,
-        walrusBlobId: result.id,
+        walrusBlobId: result.blobId,
         filename: file.name,
         mimeType: file.type,
         size: file.size,
@@ -277,15 +258,15 @@ export class NOCAPWalrusService {
       commentThread.lastUpdated = new Date().toISOString()
       
       const jsonData = JSON.stringify(commentThread, null, 2)
-      const buffer = Buffer.from(jsonData, 'utf-8')
+      const blob = new Uint8Array(Buffer.from(jsonData, 'utf-8'))
       
-      const result = await walrus.storeBlob(buffer)
+      const result = await walrus.writeBlob(blob)
       
-      if (!result.id) {
+      if (!result.blobId) {
         throw new Error('Failed to store comment thread')
       }
       
-      return result.id
+      return result.blobId
     } catch (error) {
       console.error('Error storing comment thread on Walrus:', error)
       throw error
@@ -299,10 +280,10 @@ export class NOCAPWalrusService {
     try {
       const walrus = this.initialize()
       
-      const blob = await walrus.getBlob(blobId)
-      if (!blob) return null
+      const result = await walrus.getBlob(blobId)
+      if (!result) return null
       
-      const text = blob.toString('utf-8')
+      const text = new TextDecoder().decode(result)
       return JSON.parse(text) as WalrusCommentThread
     } catch (error) {
       console.error('Error retrieving comment thread from Walrus:', error)
