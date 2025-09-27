@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useWorldChainContracts } from "@/hooks/use-world-chain-contracts";
+import { useUnifiedContracts } from "@/hooks/use-unified-contracts";
 
 export default function SubmitPage() {
   const [title, setTitle] = useState("");
@@ -13,7 +13,7 @@ export default function SubmitPage() {
   const [enableStaking, setEnableStaking] = useState(false);
   const [durationHrs, setDurationHrs] = useState(48); // fact lifeline in hours (28-60)
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { submitFact, submitFactWithStake, isLoading } = useWorldChainContracts();
+  const { submitFact, submitFactWithStake, isLoading, isVerified } = useUnifiedContracts();
 
   const isValid =
     title.trim().length > 10 &&
@@ -25,13 +25,19 @@ export default function SubmitPage() {
   const handleSubmit = async () => {
     if (!isValid || isSubmitting || isLoading) return;
 
+    // Check if user is verified
+    if (!isVerified) {
+      alert('Please verify your humanity with World ID first by visiting the World App page.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       let txHash;
       if (enableStaking && stake > 0) {
-        txHash = await submitFactWithStake(title, summary, stake.toString());
+        txHash = await submitFactWithStake(title, summary, stake.toString(), durationHrs);
       } else {
-        txHash = await submitFact(title, summary);
+        txHash = await submitFact(title, summary, durationHrs);
       }
       console.log('Fact submitted successfully:', txHash);
       
@@ -51,6 +57,21 @@ export default function SubmitPage() {
   return (
     <div className="min-h-screen">
       <div className="mx-auto max-w-3xl px-4 py-8">
+        {/* Verification Status */}
+        {!isVerified && (
+          <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="h-2 w-2 bg-orange-500 rounded-full"></div>
+              <p className="text-sm text-orange-800 dark:text-orange-200">
+                <strong>Verification Required:</strong> You must verify your humanity with World ID to submit facts.{' '}
+                <Link href="/world" className="underline hover:no-underline">
+                  Verify now →
+                </Link>
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Create a fact</h1>
           <Badge variant="outline">{enableStaking ? 'Optional ETH Stake' : 'Free Submission'}</Badge>
