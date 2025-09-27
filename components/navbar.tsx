@@ -130,7 +130,6 @@ export function Navbar() {
       if (!contractsDeployed) {
         console.log('Contracts not deployed yet, skipping auto-verification')
         toast({
-          type: 'info',
           title: 'Welcome!',
           description: 'Wallet connected successfully. Contract deployment pending for full verification.',
         })
@@ -142,7 +141,6 @@ export function Navbar() {
       if (verified) {
         setIsVerified(true)
         toast({
-          type: 'info',
           title: 'Already Verified',
           description: 'Your World ID is already verified on-chain.',
         })
@@ -153,7 +151,6 @@ export function Navbar() {
       setIsVerifying(true)
       
       toast({
-        type: 'info',
         title: 'Verifying Humanity',
         description: 'Please complete World ID verification to prove your humanity...',
       })
@@ -168,9 +165,9 @@ export function Navbar() {
 
       if (finalPayload.status === 'error') {
         toast({
-          type: 'error',
           title: 'Verification Failed',
           description: finalPayload.error_code || 'World ID verification failed. You can try again later.',
+          variant: 'destructive',
         })
         return
       }
@@ -179,7 +176,6 @@ export function Navbar() {
       const result = finalPayload as ISuccessResult
       
       toast({
-        type: 'info',
         title: 'Submitting to Blockchain',
         description: 'Recording your verification on World Chain...',
       })
@@ -193,7 +189,6 @@ export function Navbar() {
       setIsVerified(true)
       
       toast({
-        type: 'success',
         title: 'Humanity Verified!',
         description: `You're now verified on World Chain. TX: ${txHash.slice(0, 10)}...`,
       })
@@ -204,15 +199,14 @@ export function Navbar() {
       // Handle specific contract errors
       if (error.message?.includes('0x0000') || error.message?.includes('not deployed')) {
         toast({
-          type: 'info',
           title: 'Contract Pending',
           description: 'Smart contracts are being deployed. Verification will be available soon.',
         })
       } else if (!error.message?.includes('cancelled') && !error.message?.includes('denied')) {
         toast({
-          type: 'error',
           title: 'Verification Error',
           description: 'Auto-verification failed. You can verify manually later.',
+          variant: 'destructive',
         })
       }
     } finally {
@@ -228,11 +222,11 @@ export function Navbar() {
 
   const handleWalletConnect = useCallback(async () => {
     if (!MiniKit.isInstalled()) {
-      toast({
-        type: 'error',
-        title: 'World App Required',
-        description: 'Please open this app in World App to connect your wallet.',
-      })
+        toast({
+          title: 'World App Required',
+          description: 'Please open this app in World App to connect your wallet.',
+          variant: 'destructive',
+        })
       return
     }
 
@@ -253,9 +247,9 @@ export function Navbar() {
 
       if (finalPayload.status === 'error') {
         toast({
-          type: 'error',
           title: 'Connection Failed',
           description: finalPayload.error_code || 'Failed to connect wallet. Please try again.',
+          variant: 'destructive',
         })
         return
       }
@@ -266,7 +260,6 @@ export function Navbar() {
       await fetchBalances(address)
       
       toast({
-        type: 'success',
         title: 'Wallet Connected',
         description: `Successfully connected ${address.slice(0, 6)}...${address.slice(-4)}`,
       })
@@ -279,9 +272,9 @@ export function Navbar() {
     } catch (error) {
       console.error('Wallet auth error:', error)
       toast({
-        type: 'error',
         title: 'Connection Error',
         description: 'An unexpected error occurred while connecting your wallet.',
+        variant: 'destructive',
       })
     } finally {
       setIsConnecting(false)
@@ -300,7 +293,6 @@ export function Navbar() {
     setIsLoadingBalances(false)
     
     toast({
-      type: 'info',
       title: 'Wallet Disconnected',
       description: 'Your wallet has been disconnected successfully.',
     })

@@ -57,7 +57,7 @@ export function IDKitVerification({
     
     try {
       toast({
-        type: 'info',
+        // variant: default (info),
         title: 'Registering on World Chain',
         description: 'Please approve the transaction to complete your verification.',
       })
@@ -75,7 +75,7 @@ export function IDKitVerification({
       setIsVerified(true)
 
       toast({
-        type: 'success',
+        // variant: default (success),
         title: 'Verification Complete!',
         description: `You're now verified as a unique human on World Chain. TX: ${txHash.slice(0, 10)}...`,
       })
@@ -84,7 +84,7 @@ export function IDKitVerification({
     } catch (error: any) {
       console.error('Verification error:', error)
       toast({
-        type: 'error',
+        variant: 'destructive',
         title: 'Verification Failed',
         description: error.message || 'Failed to complete verification. Please try again.',
       })
@@ -97,7 +97,7 @@ export function IDKitVerification({
   const handleVerificationError = useCallback((error: any) => {
     console.error('IDKit verification error:', error)
     toast({
-      type: 'error',
+      variant: 'destructive',
       title: 'World ID Verification Failed',
       description: 'Please try again or contact support if the issue persists.',
     })

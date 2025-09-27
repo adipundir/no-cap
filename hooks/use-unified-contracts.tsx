@@ -65,7 +65,7 @@ export function useUnifiedContracts() {
     setIsLoading(true)
     try {
       toast({
-        type: 'info',
+        // variant: default (info),
         title: 'Submitting Fact',
         description: 'Please approve the transaction in World App.',
       })
@@ -80,7 +80,7 @@ export function useUnifiedContracts() {
       await fetchUserProfile()
 
       toast({
-        type: 'success',
+        // variant: default (success),
         title: 'Fact Submitted!',
         description: `Your fact has been submitted for community verification. TX: ${txHash.slice(0, 10)}...`,
       })
@@ -89,7 +89,7 @@ export function useUnifiedContracts() {
     } catch (error: any) {
       console.error('Submit fact error:', error)
       toast({
-        type: 'error',
+        variant: 'destructive',
         title: 'Submission Failed',
         description: error.message || 'Failed to submit fact. Please try again.',
       })
@@ -111,7 +111,7 @@ export function useUnifiedContracts() {
     setIsLoading(true)
     try {
       toast({
-        type: 'info',
+        // variant: default (info),
         title: 'Submitting Fact with Stake',
         description: `Staking ${stakeAmount} ETH. Please approve the transaction in World App.`,
       })
@@ -127,7 +127,7 @@ export function useUnifiedContracts() {
       await Promise.all([fetchUserProfile(), fetchETHBalance()])
 
       toast({
-        type: 'success',
+        // variant: default (success),
         title: 'Fact Submitted with Stake!',
         description: `Your fact has been submitted with ${stakeAmount} ETH stake. TX: ${txHash.slice(0, 10)}...`,
       })
@@ -136,7 +136,7 @@ export function useUnifiedContracts() {
     } catch (error: any) {
       console.error('Submit fact with stake error:', error)
       toast({
-        type: 'error',
+        variant: 'destructive',
         title: 'Submission Failed',
         description: error.message || 'Failed to submit fact with stake. Please try again.',
       })
@@ -158,7 +158,7 @@ export function useUnifiedContracts() {
     try {
       const stakeText = stakeAmount ? ` with ${stakeAmount} ETH stake` : ''
       toast({
-        type: 'info',
+        // variant: default (info),
         title: 'Casting Vote',
         description: `Voting ${vote ? 'TRUE' : 'FALSE'}${stakeText}. Please approve the transaction.`,
       })
@@ -169,7 +169,7 @@ export function useUnifiedContracts() {
       await Promise.all([fetchUserProfile(), fetchETHBalance()])
 
       toast({
-        type: 'success',
+        // variant: default (success),
         title: 'Vote Cast!',
         description: `Your vote has been recorded${stakeText}. TX: ${txHash.slice(0, 10)}...`,
       })
@@ -178,7 +178,7 @@ export function useUnifiedContracts() {
     } catch (error: any) {
       console.error('Vote error:', error)
       toast({
-        type: 'error',
+        variant: 'destructive',
         title: 'Vote Failed',
         description: error.message || 'Failed to cast vote. Please try again.',
       })
@@ -195,7 +195,7 @@ export function useUnifiedContracts() {
     setIsLoading(true)
     try {
       toast({
-        type: 'info',
+        // variant: default (info),
         title: 'Resolving Fact',
         description: 'Please approve the transaction to resolve this fact.',
       })
@@ -203,7 +203,7 @@ export function useUnifiedContracts() {
       const txHash = await UnifiedContractService.resolveFact(factId)
 
       toast({
-        type: 'success',
+        // variant: default (success),
         title: 'Fact Resolved!',
         description: `The fact has been resolved and rewards distributed. TX: ${txHash.slice(0, 10)}...`,
       })
@@ -212,7 +212,7 @@ export function useUnifiedContracts() {
     } catch (error: any) {
       console.error('Resolve fact error:', error)
       toast({
-        type: 'error',
+        variant: 'destructive',
         title: 'Resolution Failed',
         description: error.message || 'Failed to resolve fact. Please try again.',
       })

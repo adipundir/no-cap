@@ -38,9 +38,9 @@ export function EnhancedWorldIDVerification({
   const handleVerify = useCallback(async () => {
     if (!MiniKit.isInstalled()) {
       toast({
-        type: 'error',
         title: 'World App Required',
         description: 'Please open this app in World App to verify your identity.',
+        variant: 'destructive',
       })
       setVerificationStatus('error')
       return
@@ -52,7 +52,6 @@ export function EnhancedWorldIDVerification({
     try {
       // Step 1: Generate World ID proof
       toast({
-        type: 'info',
         title: 'Generating Proof',
         description: 'Creating your World ID proof...',
       })
@@ -68,9 +67,9 @@ export function EnhancedWorldIDVerification({
       if (finalPayload.status === 'error') {
         const errorMsg = finalPayload.error_code || 'World ID verification failed'
         toast({
-          type: 'error',
           title: 'Verification Failed',
           description: errorMsg,
+          variant: 'destructive',
         })
         setVerificationStatus('error')
         onError?.(finalPayload)
@@ -83,7 +82,6 @@ export function EnhancedWorldIDVerification({
       setVerificationStatus('proof-generated')
 
       toast({
-        type: 'success',
         title: 'World ID Proof Generated',
         description: 'Your humanity has been verified!',
       })
@@ -92,7 +90,6 @@ export function EnhancedWorldIDVerification({
       if (enableOnChainVerification && walletAddress) {
         try {
           toast({
-            type: 'info',
             title: 'Submitting to Blockchain',
             description: 'Recording your verification on World Chain...',
           })
@@ -108,7 +105,6 @@ export function EnhancedWorldIDVerification({
           setVerificationStatus('on-chain-verified')
           
           toast({
-            type: 'success',
             title: 'On-Chain Verification Complete!',
             description: 'Your World ID is now verified on World Chain.',
           })
@@ -118,9 +114,9 @@ export function EnhancedWorldIDVerification({
           // Proof generated but on-chain verification failed
           console.error('On-chain verification failed:', contractError)
           toast({
-            type: 'error',
             title: 'On-Chain Verification Failed',
             description: 'World ID proof generated but blockchain submission failed.',
+            variant: 'destructive',
           })
           onSuccess?.(result) // Still call success with proof
         }
@@ -132,9 +128,9 @@ export function EnhancedWorldIDVerification({
     } catch (error: any) {
       console.error('World ID verification error:', error)
       toast({
-        type: 'error',
         title: 'Verification Error',
         description: error.message || 'An unexpected error occurred during verification.',
+        variant: 'destructive',
       })
       setVerificationStatus('error')
       onError?.(error)

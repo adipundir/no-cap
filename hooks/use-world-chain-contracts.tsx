@@ -22,7 +22,7 @@ export function useWorldChainContracts() {
     setIsLoading(true)
     try {
       toast({
-        type: 'info',
+        // variant: default (info),
         title: 'Verifying World ID',
         description: 'Submitting your World ID proof to the blockchain...',
       })
@@ -36,7 +36,7 @@ export function useWorldChainContracts() {
 
       setIsVerified(true)
       toast({
-        type: 'success',
+        // variant: default (success),
         title: 'World ID Verified!',
         description: `Transaction confirmed: ${txHash.slice(0, 10)}...`,
       })
@@ -45,7 +45,7 @@ export function useWorldChainContracts() {
     } catch (error: any) {
       console.error('World ID verification failed:', error)
       toast({
-        type: 'error',
+        variant: 'destructive',
         title: 'Verification Failed',
         description: error.message || 'Failed to verify World ID on-chain',
       })
@@ -65,7 +65,7 @@ export function useWorldChainContracts() {
     setIsLoading(true)
     try {
       toast({
-        type: 'info',
+        // variant: default (info),
         title: 'Submitting Fact',
         description: 'Creating your fact claim on World Chain...',
       })
@@ -73,7 +73,7 @@ export function useWorldChainContracts() {
       const txHash = await WorldChainContractService.submitFact(title, description)
 
       toast({
-        type: 'success',
+        // variant: default (success),
         title: 'Fact Submitted!',
         description: `Your fact claim is now live. TX: ${txHash.slice(0, 10)}...`,
       })
@@ -82,7 +82,7 @@ export function useWorldChainContracts() {
     } catch (error: any) {
       console.error('Fact submission failed:', error)
       toast({
-        type: 'error',
+        variant: 'destructive',
         title: 'Submission Failed',
         description: error.message || 'Failed to submit fact claim',
       })
@@ -103,7 +103,7 @@ export function useWorldChainContracts() {
     setIsLoading(true)
     try {
       toast({
-        type: 'info',
+        // variant: default (info),
         title: 'Submitting Fact with Stake',
         description: `Staking ${stakeAmount} ETH and creating your fact claim...`,
       })
@@ -115,7 +115,7 @@ export function useWorldChainContracts() {
       )
 
       toast({
-        type: 'success',
+        // variant: default (success),
         title: 'Fact Submitted with Stake!',
         description: `Your fact claim is live with ${stakeAmount} ETH stake. TX: ${txHash.slice(0, 10)}...`,
       })
@@ -124,7 +124,7 @@ export function useWorldChainContracts() {
     } catch (error: any) {
       console.error('Fact submission with stake failed:', error)
       toast({
-        type: 'error',
+        variant: 'destructive',
         title: 'Submission Failed',
         description: error.message || 'Failed to submit fact claim with stake',
       })
@@ -142,7 +142,7 @@ export function useWorldChainContracts() {
     try {
       const stakeText = stakeAmount ? ` with ${stakeAmount} ETH stake` : ''
       toast({
-        type: 'info',
+        // variant: default (info),
         title: 'Submitting Vote',
         description: `Voting ${vote ? 'TRUE' : 'FALSE'} on fact claim${stakeText}...`,
       })
@@ -150,7 +150,7 @@ export function useWorldChainContracts() {
       const txHash = await WorldChainContractService.voteFact(factId, vote, stakeAmount)
 
       toast({
-        type: 'success',
+        // variant: default (success),
         title: 'Vote Submitted!',
         description: `Your vote has been recorded${stakeText}. TX: ${txHash.slice(0, 10)}...`,
       })
@@ -159,7 +159,7 @@ export function useWorldChainContracts() {
     } catch (error: any) {
       console.error('Voting failed:', error)
       toast({
-        type: 'error',
+        variant: 'destructive',
         title: 'Vote Failed',
         description: error.message || 'Failed to submit vote',
       })

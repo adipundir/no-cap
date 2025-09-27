@@ -31,9 +31,9 @@ export function WorldIDVerification({
   const handleVerify = useCallback(async () => {
     if (!MiniKit.isInstalled()) {
       toast({
-        type: 'error',
         title: 'World App Required',
         description: 'Please open this app in World App to verify your identity.',
+        variant: 'destructive',
       })
       setVerificationStatus('error')
       return
@@ -53,9 +53,9 @@ export function WorldIDVerification({
 
       if (finalPayload.status === 'error') {
         toast({
-          type: 'error',
           title: 'Verification Failed',
           description: finalPayload.error_code || 'World ID verification failed. Please try again.',
+          variant: 'destructive',
         })
         setVerificationStatus('error')
         onError?.(finalPayload)
@@ -72,7 +72,6 @@ export function WorldIDVerification({
 
       setVerificationStatus('success')
       toast({
-        type: 'success',
         title: 'Identity Verified',
         description: 'Your World ID has been successfully verified and proof generated!',
       })
@@ -80,9 +79,9 @@ export function WorldIDVerification({
     } catch (error) {
       console.error('Verification error:', error)
       toast({
-        type: 'error',
         title: 'Verification Error',
         description: 'An unexpected error occurred during verification.',
+        variant: 'destructive',
       })
       setVerificationStatus('error')
       onError?.(error)
