@@ -41,11 +41,8 @@ export default function FeedPage() {
           throw new Error("Failed to fetch facts");
         }
         const data = await response.json();
-        // Only show facts that came from Walrus (have blob id)
-        const fromWalrus = Array.isArray(data.facts)
-          ? data.facts.filter((f: Fact) => Boolean(f.walrusBlobId))
-          : [];
-        setFacts(fromWalrus);
+        // Show all facts (temporarily removed Walrus filter)
+        setFacts(data.facts || []);
       } catch (error) {
         console.error("Failed to load facts:", error);
       }

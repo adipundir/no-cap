@@ -1,6 +1,6 @@
 // Walrus Storage Service for NOCAP
-// Using HTTP API - No Sui wallet required!
-import { WalrusHttpService, getWalrusHttpService } from './walrus-http'
+// Using Hybrid approach - Real Walrus with intelligent mock fallback
+import { WalrusHybridService, getWalrusHybridService } from './walrus-hybrid'
 
 // Walrus configuration for NOCAP
 const WALRUS_CONFIG = {
@@ -84,16 +84,16 @@ export interface WalrusComment {
  * Handles all interactions with Walrus for content storage
  */
 export class NOCAPWalrusService {
-  private static walrusHttp: WalrusHttpService
+  private static walrusHybrid: WalrusHybridService
 
   /**
    * Initialize Walrus service
    */
   static initialize() {
-    if (!this.walrusHttp) {
-      this.walrusHttp = getWalrusHttpService()
+    if (!this.walrusHybrid) {
+      this.walrusHybrid = getWalrusHybridService()
     }
-    return this.walrusHttp
+    return this.walrusHybrid
   }
 
   /**

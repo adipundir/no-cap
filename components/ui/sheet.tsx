@@ -1,4 +1,7 @@
+"use client"
+
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 import { X } from "lucide-react"
 
@@ -69,9 +72,9 @@ const SheetContent = React.forwardRef<
   
   const sideClasses = {
     top: 'top-0 left-0 right-0 h-auto',
-    right: 'top-0 right-0 h-full',
+    right: 'top-0 right-0 h-full w-full',
     bottom: 'bottom-0 left-0 right-0 h-auto',
-    left: 'top-0 left-0 h-full'
+    left: 'top-0 left-0 h-full w-full'
   }
   
   const slideClasses = {
@@ -81,11 +84,13 @@ const SheetContent = React.forwardRef<
     left: 'animate-in slide-in-from-left'
   }
   
-  return (
+  const portalTarget = typeof document !== 'undefined' ? document.body : null
+
+  const content = (
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+        className="fixed inset-0 z-[100] bg-background"
         onClick={() => setIsOpen(false)}
       />
       
@@ -93,7 +98,7 @@ const SheetContent = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "fixed z-50 bg-background p-6 shadow-lg border",
+          "fixed z-[110] bg-background p-6 shadow-lg border w-full max-w-none overflow-y-auto",
           sideClasses[side],
           slideClasses[side],
           className
@@ -111,7 +116,41 @@ const SheetContent = React.forwardRef<
       </div>
     </>
   )
+
+  if (!portalTarget) return null
+  return createPortal(content, portalTarget)
 })
 SheetContent.displayName = "SheetContent"
 
-export { Sheet, SheetTrigger, SheetContent }
+const SheetClose = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    asChild?: boolean
+  }
+>(({ className, asChild, children, ...props }, ref) => {
+  const { setIsOpen } = React.useContext(SheetContext)
+
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children as React.ReactElement<any>, {
+      ...(children.props as any),
+      onClick: (e: React.MouseEvent) => {
+        (children.props as any)?.onClick?.(e)
+        setIsOpen(false)
+      }
+    } as any)
+  }
+
+  return (
+    <button
+      ref={ref}
+      className={className}
+      onClick={() => setIsOpen(false)}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+})
+SheetClose.displayName = "SheetClose"
+
+export { Sheet, SheetTrigger, SheetContent, SheetClose }

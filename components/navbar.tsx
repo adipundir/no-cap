@@ -10,7 +10,8 @@ import { useSimplifiedContracts } from '@/hooks/use-simplified-contracts'
 import { 
   Sheet, 
   SheetContent, 
-  SheetTrigger 
+  SheetTrigger,
+  SheetClose
 } from '@/components/ui/sheet'
 import { 
   DropdownMenu, 
@@ -205,9 +206,15 @@ export default function Navbar() {
             </Link>
             <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
               <div className="flex flex-col space-y-3">
-                <Link href="/feed">Feed</Link>
-                <Link href="/submit">Submit</Link>
-                <Link href="/dashboard">Dashboard</Link>
+                <SheetClose asChild>
+                  <Link href="/feed">Feed</Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link href="/submit">Submit</Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link href="/dashboard">Dashboard</Link>
+                </SheetClose>
               </div>
             </div>
           </SheetContent>
