@@ -39,9 +39,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       fullContent: body.fullContent,
       sources: body.sources,
       metadata: {
-        author: body.metadata.author,
+        author: body.author,
         created: new Date(body.metadata.created),
-        updated: new Date(body.metadata.updated),
+        updated: new Date(body.metadata.lastModified),
         version: body.metadata.version,
       },
     });
@@ -64,7 +64,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       fact,
       walrusBlobId: storeResult.walrusMetadata.blobId,
       walrusMetadata: storeResult.walrusMetadata,
-      availabilityCertificate: storeResult.availabilityCertificate,
     });
 
     return NextResponse.json({ fact }, { status: 201 });
@@ -74,14 +73,3 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * GET /api/facts/:id
- * Retrieve fact metadata and Walrus blob reference
- */
-export async function fetchFact(id: string): Promise<Fact | null> {
-  const record = getFactRecord(id);
-  if (!record) {
-    return null;
-  }
-  return record.fact;
-}

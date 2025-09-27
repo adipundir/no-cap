@@ -227,7 +227,7 @@ export class UnifiedContractService {
       throw new Error(finalPayload.error_code || 'Transaction failed')
     }
 
-    return finalPayload.transaction_hash
+    return finalPayload.transaction_id || 'transaction_completed'
   }
 
   /**
@@ -257,7 +257,7 @@ export class UnifiedContractService {
       throw new Error(finalPayload.error_code || 'Transaction failed')
     }
 
-    return finalPayload.transaction_hash
+    return finalPayload.transaction_id || 'transaction_completed'
   }
 
   /**
@@ -292,7 +292,7 @@ export class UnifiedContractService {
       throw new Error(finalPayload.error_code || 'Transaction failed')
     }
 
-    return finalPayload.transaction_hash
+    return finalPayload.transaction_id || 'transaction_completed'
   }
 
   /**
@@ -322,7 +322,7 @@ export class UnifiedContractService {
       throw new Error(finalPayload.error_code || 'Transaction failed')
     }
 
-    return finalPayload.transaction_hash
+    return finalPayload.transaction_id || 'transaction_completed'
   }
 
   /**
@@ -339,7 +339,7 @@ export class UnifiedContractService {
           address: WORLD_CHAIN_CONTRACTS.NOCAP_UNIFIED,
           abi: NOCAP_UNIFIED_ABI,
           functionName: 'resolveFact',
-          args: [factId],
+          args: [BigInt(factId)],
         }
       ]
     })
@@ -348,7 +348,7 @@ export class UnifiedContractService {
       throw new Error(finalPayload.error_code || 'Transaction failed')
     }
 
-    return finalPayload.transaction_hash
+    return finalPayload.transaction_id || 'transaction_completed'
   }
 
   /**

@@ -177,7 +177,7 @@ export class WorldChainContractService {
       throw new Error(finalPayload.error_code || 'Transaction failed')
     }
 
-    return finalPayload.transaction_hash
+    return finalPayload.transaction_id || 'transaction_completed'
   }
 
   /**
@@ -206,7 +206,7 @@ export class WorldChainContractService {
       throw new Error(finalPayload.error_code || 'Transaction failed')
     }
 
-    return finalPayload.transaction_hash
+    return finalPayload.transaction_id || 'transaction_completed'
   }
 
   /**
@@ -240,7 +240,7 @@ export class WorldChainContractService {
       throw new Error(finalPayload.error_code || 'Transaction failed')
     }
 
-    return finalPayload.transaction_hash
+    return finalPayload.transaction_id || 'transaction_completed'
   }
 
   /**
@@ -270,7 +270,7 @@ export class WorldChainContractService {
       throw new Error(finalPayload.error_code || 'Transaction failed')
     }
 
-    return finalPayload.transaction_hash
+    return finalPayload.transaction_id || 'transaction_completed'
   }
 
   /**

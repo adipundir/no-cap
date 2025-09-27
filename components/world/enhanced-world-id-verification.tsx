@@ -150,7 +150,7 @@ export function EnhancedWorldIDVerification({
       case 'on-chain-verified':
         return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">On-Chain Verified</Badge>
       case 'error':
-        return <Badge variant="destructive">Verification Failed</Badge>
+        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Verification Failed</Badge>
       default:
         return <Badge variant="outline">Not Verified</Badge>
     }

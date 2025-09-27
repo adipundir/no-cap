@@ -43,7 +43,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       walrusBlobId: storeResult.walrusMetadata.blobId,
       walrusMetadata: storeResult.walrusMetadata,
-      availabilityCertificate: storeResult.availabilityCertificate,
     });
 
     return NextResponse.json({

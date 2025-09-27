@@ -66,7 +66,7 @@ export function IDKitVerification({
       const txHash = await verifyAndRegister(
         result.merkle_root,
         result.nullifier_hash,
-        result.proof
+        Array.isArray(result.proof) ? result.proof : [result.proof]
       )
 
       // Get user profile after successful registration
@@ -292,7 +292,7 @@ export function IDKitVerification({
                     handleVerify={handleVerificationSuccess}
                     onError={handleVerificationError}
                   >
-                    {({ open }) => (
+                    {({ open }: { open: () => void }) => (
                       <Button onClick={open} className="w-full">
                         <Globe className="mr-2 h-4 w-4" />
                         Verify with World ID

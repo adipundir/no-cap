@@ -290,7 +290,7 @@ export class WalrusHybridService {
       await NOCAPWalrusService.updateFact(walrusBlobId, updatedContent)
 
       return {
-        txHash: finalPayload.transaction_hash,
+        txHash: finalPayload.transaction_id || 'transaction_completed',
         walrusBlobId,
         factId
       }
@@ -415,7 +415,7 @@ export class WalrusHybridService {
         throw new Error(finalPayload.error_code || 'Voting failed')
       }
 
-      return finalPayload.transaction_hash
+      return finalPayload.transaction_id || 'transaction_completed'
     } catch (error) {
       console.error('Error voting on fact:', error)
       throw error
@@ -489,7 +489,7 @@ export class WalrusHybridService {
               data: encodeFunctionData({
                 abi: NOCAP_WALRUS_HYBRID_ABI,
                 functionName: 'getFactReference',
-                args: [factId]
+                args: [BigInt(factId)]
               })
             },
             'latest'
