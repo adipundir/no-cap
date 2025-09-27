@@ -10,99 +10,59 @@ import {
   ContextComment,
   ContextCommentBlob,
   StoreOptions,
-  RetrieveOptions,
   WalrusStorageError,
   WalrusRetrievalError,
   WalrusNetworkError,
-  WalrusStorageEvent,
-  WalrusEventHandler,
   WalrusCache,
+  WalrusStorageEvent,
+  WalrusEventHandler
 } from '@/types/walrus';
 
 /**
- * In-memory cache implementation for Walrus blobs
- * In production, consider using Redis or another distributed cache
- */
-class MemoryWalrusCache implements WalrusCache {
-  private cache = new Map<string, { data: WalrusRetrieveResponse; expires: number }>();
-
-  async get(blobId: string): Promise<WalrusRetrieveResponse | null> {
-    const cached = this.cache.get(blobId);
-    if (!cached) return null;
-    
-    if (Date.now() > cached.expires) {
-      this.cache.delete(blobId);
-      return null;
-    }
-    
-    return cached.data;
-  }
-
-  async set(blobId: string, data: WalrusRetrieveResponse, ttl: number = 3600000): Promise<void> {
-    this.cache.set(blobId, {
-      data,
-      expires: Date.now() + ttl
-    });
-  }
-
-  async delete(blobId: string): Promise<boolean> {
-    return this.cache.delete(blobId);
-  }
-
-  async clear(): Promise<void> {
-    this.cache.clear();
-  }
-}
-
-/**
  * Walrus Storage Service Implementation
- * Handles blob storage operations for facts and comments using Walrus Protocol
+ * Provides high-level storage operations for the no-cap fact-checking application
  */
 export class WalrusStorageServiceImpl implements WalrusStorageService {
   private walrusSDK: WalrusSDK;
-  private cache: WalrusCache;
+  private config: WalrusStorageConfig;
+  private cache?: WalrusCache;
   private eventHandlers: Map<string, WalrusEventHandler[]> = new Map();
-  private factBlobIndex = new Map<string, string>(); // factId -> blobId
-  private commentBlobIndex = new Map<string, string>(); // commentId -> blobId
 
-  constructor(
-    private config: WalrusStorageConfig,
-    cache?: WalrusCache
-  ) {
+  constructor(config: WalrusStorageConfig, cache?: WalrusCache) {
+    this.config = config;
+    this.cache = cache;
     this.walrusSDK = new WalrusSDK({
       aggregator: config.aggregatorUrl,
       publisher: config.publisherUrl,
-      apiUrl: config.apiUrl,
+      apiUrl: config.apiUrl || config.aggregatorUrl,
     });
-    
-    this.cache = cache || new MemoryWalrusCache();
   }
 
-  // Core blob operations
+  /**
+   * Core blob operations
+   */
   async storeBlob(
     data: Buffer | Uint8Array | string, 
     options?: StoreOptions
   ): Promise<WalrusStoreResponse> {
     try {
-      const buffer = this.ensureBuffer(data);
+      // Convert string to Buffer if needed
+      const blobData = typeof data === 'string' ? Buffer.from(data, 'utf-8') : data;
       
-      // Validate blob size
-      if (this.config.maxBlobSize && buffer.length > this.config.maxBlobSize) {
-        throw new WalrusStorageError('Blob size exceeds maximum allowed size', {
-          size: buffer.length,
-          maxSize: this.config.maxBlobSize
-        });
+      // Store blob using Walrus SDK
+      const response = await this.walrusSDK.storeBlob(blobData);
+      
+      if (!response || !response.blobId) {
+        throw new WalrusStorageError('Failed to store blob: Invalid response from Walrus');
       }
 
-      const response = await this.walrusSDK.storeBlob(buffer);
-      
       const metadata: WalrusBlobMetadata = {
         blobId: response.blobId,
-        size: buffer.length,
+        size: blobData.length,
         mimeType: options?.mimeType,
         createdAt: new Date(),
         expiresAt: options?.expirationDuration 
-          ? new Date(Date.now() + options.expirationDuration)
+          ? new Date(Date.now() + options.expirationDuration) 
           : undefined,
         erasureCodingParams: {
           redundancy: options?.redundancy || 3,
@@ -112,152 +72,138 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
 
       const storeResponse: WalrusStoreResponse = {
         blobId: response.blobId,
-        availabilityCertificate: response.availabilityCertificate || '',
+        availabilityCertificate: response.certificate || '',
         metadata,
         transactionId: response.transactionId
       };
 
-      // Cache the stored blob
-      const retrieveResponse: WalrusRetrieveResponse = {
-        data: buffer,
-        metadata
-      };
-      await this.cache.set(response.blobId, retrieveResponse, options?.expirationDuration);
+      // Cache the stored data for quick retrieval
+      if (this.cache) {
+        const retrieveResponse: WalrusRetrieveResponse = {
+          data: blobData,
+          metadata
+        };
+        await this.cache.set(response.blobId, retrieveResponse, options?.expirationDuration);
+      }
 
+      // Emit storage event
       this.emitEvent({
         type: 'blob_stored',
         blobId: response.blobId,
         timestamp: new Date(),
-        metadata: { size: buffer.length, mimeType: options?.mimeType }
+        metadata: { size: blobData.length, mimeType: options?.mimeType }
       });
 
       return storeResponse;
     } catch (error) {
-      const blobError = new WalrusStorageError(
-        `Failed to store blob: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        { originalError: error }
-      );
-      
       this.emitEvent({
         type: 'operation_failed',
-        blobId: 'unknown',
+        blobId: '',
         timestamp: new Date(),
-        metadata: { operation: 'store', error: blobError.message }
+        metadata: { operation: 'store', error: error.message }
       });
       
-      throw blobError;
+      throw new WalrusStorageError(
+        `Failed to store blob: ${error.message}`,
+        { originalError: error, dataSize: data.length }
+      );
     }
   }
 
   async retrieveBlob(blobId: string): Promise<WalrusRetrieveResponse> {
     try {
       // Check cache first
-      const cached = await this.cache.get(blobId);
-      if (cached) {
-        this.emitEvent({
-          type: 'blob_retrieved',
-          blobId,
-          timestamp: new Date(),
-          metadata: { source: 'cache' }
-        });
-        return cached;
+      if (this.cache) {
+        const cached = await this.cache.get(blobId);
+        if (cached) {
+          return cached;
+        }
       }
 
-      const response = await this.walrusSDK.getBlob(blobId);
+      // Retrieve from Walrus
+      const response = await this.walrusSDK.retrieveBlob(blobId);
       
+      if (!response) {
+        throw new WalrusRetrievalError(`Blob not found: ${blobId}`);
+      }
+
       const retrieveResponse: WalrusRetrieveResponse = {
-        data: response.data,
-        metadata: {
-          blobId,
-          size: response.data.length,
-          createdAt: new Date(), // This should ideally come from Walrus metadata
-          mimeType: response.contentType
-        }
+        data: response,
+        metadata: await this.getBlobMetadata(blobId)
       };
 
-      // Cache for future requests
-      await this.cache.set(blobId, retrieveResponse);
+      // Update cache
+      if (this.cache) {
+        await this.cache.set(blobId, retrieveResponse);
+      }
 
       this.emitEvent({
         type: 'blob_retrieved',
         blobId,
         timestamp: new Date(),
-        metadata: { source: 'network', size: response.data.length }
+        metadata: { size: response.length }
       });
 
       return retrieveResponse;
     } catch (error) {
-      const retrievalError = new WalrusRetrievalError(
-        `Failed to retrieve blob ${blobId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        { blobId, originalError: error }
-      );
-      
       this.emitEvent({
         type: 'operation_failed',
         blobId,
         timestamp: new Date(),
-        metadata: { operation: 'retrieve', error: retrievalError.message }
+        metadata: { operation: 'retrieve', error: error.message }
       });
-      
-      throw retrievalError;
+
+      throw new WalrusRetrievalError(
+        `Failed to retrieve blob ${blobId}: ${error.message}`,
+        { blobId, originalError: error }
+      );
     }
   }
 
   async deleteBlob(blobId: string): Promise<boolean> {
     try {
+      // Note: Walrus may not support direct deletion - this is a logical delete
       // Remove from cache
-      await this.cache.delete(blobId);
-      
-      // Note: Walrus doesn't support explicit deletion - blobs expire naturally
-      // This method primarily handles cleanup of local references
-      
+      if (this.cache) {
+        await this.cache.delete(blobId);
+      }
+
       this.emitEvent({
         type: 'blob_deleted',
         blobId,
-        timestamp: new Date(),
-        metadata: { operation: 'delete' }
+        timestamp: new Date()
       });
 
       return true;
     } catch (error) {
-      throw new WalrusStorageError(
-        `Failed to delete blob ${blobId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        { blobId, originalError: error }
-      );
+      throw new WalrusStorageError(`Failed to delete blob ${blobId}: ${error.message}`);
     }
   }
 
   async getBlobMetadata(blobId: string): Promise<WalrusBlobMetadata> {
-    try {
-      // Try to get from cache first
-      const cached = await this.cache.get(blobId);
-      if (cached) {
-        return cached.metadata;
+    // In a real implementation, this would query Walrus for metadata
+    // For now, return basic metadata
+    return {
+      blobId,
+      size: 0,
+      createdAt: new Date(),
+      erasureCodingParams: {
+        redundancy: 3,
+        threshold: 2
       }
-
-      // For Walrus, we might need to retrieve the blob to get full metadata
-      // In a production system, you'd want a separate metadata endpoint
-      const response = await this.retrieveBlob(blobId);
-      return response.metadata;
-    } catch (error) {
-      throw new WalrusRetrievalError(
-        `Failed to get metadata for blob ${blobId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        { blobId, originalError: error }
-      );
-    }
+    };
   }
 
-  // Fact-specific operations
+  /**
+   * Fact-specific operations
+   */
   async storeFact(fact: FactContent): Promise<FactContentBlob> {
     try {
-      const factData = JSON.stringify(fact);
-      const storeResponse = await this.storeBlob(factData, {
+      const factJson = JSON.stringify(fact, null, 2);
+      const storeResponse = await this.storeBlob(factJson, {
         mimeType: 'application/json',
         metadata: { type: 'fact', factId: fact.id }
       });
-
-      // Index the fact
-      this.factBlobIndex.set(fact.id, storeResponse.blobId);
 
       return {
         factId: fact.id,
@@ -265,39 +211,33 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
         walrusMetadata: storeResponse.metadata
       };
     } catch (error) {
-      throw new WalrusStorageError(
-        `Failed to store fact ${fact.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        { factId: fact.id, originalError: error }
-      );
+      throw new WalrusStorageError(`Failed to store fact ${fact.id}: ${error.message}`);
     }
   }
 
   async retrieveFact(factId: string): Promise<FactContentBlob> {
     try {
-      const blobId = this.factBlobIndex.get(factId);
-      if (!blobId) {
-        throw new WalrusRetrievalError(`No blob found for fact ${factId}`, { factId });
-      }
-
-      const response = await this.retrieveBlob(blobId);
-      const fact: FactContent = JSON.parse(response.data.toString());
+      // In a real app, you'd maintain a mapping of factId -> blobId
+      // For now, assume factId is the blobId
+      const retrieveResponse = await this.retrieveBlob(factId);
+      const factContent: FactContent = JSON.parse(retrieveResponse.data.toString('utf-8'));
 
       return {
         factId,
-        content: fact,
-        walrusMetadata: response.metadata
+        content: factContent,
+        walrusMetadata: retrieveResponse.metadata
       };
     } catch (error) {
-      throw new WalrusRetrievalError(
-        `Failed to retrieve fact ${factId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        { factId, originalError: error }
-      );
+      throw new WalrusRetrievalError(`Failed to retrieve fact ${factId}: ${error.message}`);
     }
   }
 
   async updateFact(factId: string, updates: Partial<FactContent>): Promise<FactContentBlob> {
     try {
+      // Retrieve existing fact
       const existingFact = await this.retrieveFact(factId);
+      
+      // Merge updates
       const updatedFact: FactContent = {
         ...existingFact.content,
         ...updates,
@@ -308,26 +248,23 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
         }
       };
 
+      // Store updated fact
       return await this.storeFact(updatedFact);
     } catch (error) {
-      throw new WalrusStorageError(
-        `Failed to update fact ${factId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        { factId, originalError: error }
-      );
+      throw new WalrusStorageError(`Failed to update fact ${factId}: ${error.message}`);
     }
   }
 
-  // Context/comment operations
+  /**
+   * Context/comment operations
+   */
   async storeComment(comment: ContextComment): Promise<ContextCommentBlob> {
     try {
-      const commentData = JSON.stringify(comment);
-      const storeResponse = await this.storeBlob(commentData, {
+      const commentJson = JSON.stringify(comment, null, 2);
+      const storeResponse = await this.storeBlob(commentJson, {
         mimeType: 'application/json',
         metadata: { type: 'comment', commentId: comment.id, factId: comment.factId }
       });
-
-      // Index the comment
-      this.commentBlobIndex.set(comment.id, storeResponse.blobId);
 
       return {
         commentId: comment.id,
@@ -336,92 +273,82 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
         walrusMetadata: storeResponse.metadata
       };
     } catch (error) {
-      throw new WalrusStorageError(
-        `Failed to store comment ${comment.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        { commentId: comment.id, originalError: error }
-      );
+      throw new WalrusStorageError(`Failed to store comment ${comment.id}: ${error.message}`);
     }
   }
 
   async retrieveComment(commentId: string): Promise<ContextCommentBlob> {
     try {
-      const blobId = this.commentBlobIndex.get(commentId);
-      if (!blobId) {
-        throw new WalrusRetrievalError(`No blob found for comment ${commentId}`, { commentId });
-      }
-
-      const response = await this.retrieveBlob(blobId);
-      const comment: ContextComment = JSON.parse(response.data.toString());
+      const retrieveResponse = await this.retrieveBlob(commentId);
+      const comment: ContextComment = JSON.parse(retrieveResponse.data.toString('utf-8'));
 
       return {
         commentId,
         factId: comment.factId,
         comment,
-        walrusMetadata: response.metadata
+        walrusMetadata: retrieveResponse.metadata
       };
     } catch (error) {
-      throw new WalrusRetrievalError(
-        `Failed to retrieve comment ${commentId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        { commentId, originalError: error }
-      );
+      throw new WalrusRetrievalError(`Failed to retrieve comment ${commentId}: ${error.message}`);
     }
   }
 
   async retrieveFactComments(factId: string): Promise<ContextCommentBlob[]> {
-    // In a production system, you'd want to maintain an index of comments per fact
-    // For now, this is a simplified implementation
-    const comments: ContextCommentBlob[] = [];
-    
-    for (const [commentId, blobId] of this.commentBlobIndex) {
-      try {
-        const comment = await this.retrieveComment(commentId);
-        if (comment.factId === factId) {
-          comments.push(comment);
-        }
-      } catch (error) {
-        // Log error but continue with other comments
-        console.warn(`Failed to retrieve comment ${commentId}:`, error);
-      }
-    }
-
-    return comments;
+    // In a real implementation, you'd maintain an index of factId -> commentIds
+    // This is a placeholder that would need proper indexing
+    throw new Error('retrieveFactComments requires proper indexing implementation');
   }
 
-  // Batch operations
+  /**
+   * Batch operations
+   */
   async storeMultipleComments(comments: ContextComment[]): Promise<ContextCommentBlob[]> {
-    const results = await Promise.allSettled(
-      comments.map(comment => this.storeComment(comment))
-    );
+    const results: ContextCommentBlob[] = [];
+    
+    // Process in parallel for better performance
+    const storePromises = comments.map(comment => this.storeComment(comment));
+    const storedComments = await Promise.allSettled(storePromises);
 
-    return results
-      .filter((result): result is PromiseFulfilledResult<ContextCommentBlob> => 
-        result.status === 'fulfilled'
-      )
-      .map(result => result.value);
+    storedComments.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        results.push(result.value);
+      } else {
+        console.error(`Failed to store comment ${comments[index].id}:`, result.reason);
+      }
+    });
+
+    return results;
   }
 
   async retrieveMultipleFacts(factIds: string[]): Promise<FactContentBlob[]> {
-    const results = await Promise.allSettled(
-      factIds.map(factId => this.retrieveFact(factId))
-    );
+    const results: FactContentBlob[] = [];
+    
+    const retrievePromises = factIds.map(factId => this.retrieveFact(factId));
+    const retrievedFacts = await Promise.allSettled(retrievePromises);
 
-    return results
-      .filter((result): result is PromiseFulfilledResult<FactContentBlob> => 
-        result.status === 'fulfilled'
-      )
-      .map(result => result.value);
+    retrievedFacts.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        results.push(result.value);
+      } else {
+        console.error(`Failed to retrieve fact ${factIds[index]}:`, result.reason);
+      }
+    });
+
+    return results;
   }
 
-  // Event handling
-  addEventListener(type: string, handler: WalrusEventHandler): void {
-    if (!this.eventHandlers.has(type)) {
-      this.eventHandlers.set(type, []);
+  /**
+   * Event handling
+   */
+  addEventListener(eventType: string, handler: WalrusEventHandler): void {
+    if (!this.eventHandlers.has(eventType)) {
+      this.eventHandlers.set(eventType, []);
     }
-    this.eventHandlers.get(type)!.push(handler);
+    this.eventHandlers.get(eventType)!.push(handler);
   }
 
-  removeEventListener(type: string, handler: WalrusEventHandler): void {
-    const handlers = this.eventHandlers.get(type);
+  removeEventListener(eventType: string, handler: WalrusEventHandler): void {
+    const handlers = this.eventHandlers.get(eventType);
     if (handlers) {
       const index = handlers.indexOf(handler);
       if (index > -1) {
@@ -431,58 +358,78 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
   }
 
   private emitEvent(event: WalrusStorageEvent): void {
-    const handlers = this.eventHandlers.get(event.type) || [];
-    handlers.forEach(handler => {
-      try {
-        handler(event);
-      } catch (error) {
-        console.error('Error in event handler:', error);
-      }
-    });
-  }
-
-  // Utility methods
-  private ensureBuffer(data: Buffer | Uint8Array | string): Buffer {
-    if (Buffer.isBuffer(data)) {
-      return data;
-    }
-    if (data instanceof Uint8Array) {
-      return Buffer.from(data);
-    }
-    return Buffer.from(data, 'utf-8');
-  }
-
-  // Health check
-  async healthCheck(): Promise<{
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    latency: number;
-    availableNodes: number;
-  }> {
-    const startTime = Date.now();
-    
-    try {
-      // Perform a simple operation to check health
-      const testData = Buffer.from('health-check');
-      const response = await this.storeBlob(testData, {
-        metadata: { type: 'health-check' }
+    const handlers = this.eventHandlers.get(event.type);
+    if (handlers) {
+      handlers.forEach(handler => {
+        try {
+          handler(event);
+        } catch (error) {
+          console.error('Error in event handler:', error);
+        }
       });
-      
-      // Clean up test blob
-      await this.deleteBlob(response.blobId);
-      
-      const latency = Date.now() - startTime;
-      
-      return {
-        status: latency < 5000 ? 'healthy' : 'degraded',
-        latency,
-        availableNodes: 1 // This would be determined by actual node discovery
-      };
-    } catch (error) {
-      return {
-        status: 'unhealthy',
-        latency: Date.now() - startTime,
-        availableNodes: 0
-      };
     }
   }
+}
+
+/**
+ * Simple in-memory cache implementation
+ */
+export class MemoryWalrusCache implements WalrusCache {
+  private cache: Map<string, { data: WalrusRetrieveResponse; expires?: number }> = new Map();
+  private cleanupInterval: NodeJS.Timeout;
+
+  constructor(private defaultTtl: number = 300000) { // 5 minutes default
+    // Clean up expired entries every minute
+    this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
+  }
+
+  async get(blobId: string): Promise<WalrusRetrieveResponse | null> {
+    const entry = this.cache.get(blobId);
+    if (!entry) return null;
+
+    if (entry.expires && Date.now() > entry.expires) {
+      this.cache.delete(blobId);
+      return null;
+    }
+
+    return entry.data;
+  }
+
+  async set(blobId: string, data: WalrusRetrieveResponse, ttl?: number): Promise<void> {
+    const expires = ttl ? Date.now() + ttl : Date.now() + this.defaultTtl;
+    this.cache.set(blobId, { data, expires });
+  }
+
+  async delete(blobId: string): Promise<boolean> {
+    return this.cache.delete(blobId);
+  }
+
+  async clear(): Promise<void> {
+    this.cache.clear();
+  }
+
+  private cleanup(): void {
+    const now = Date.now();
+    for (const [blobId, entry] of this.cache.entries()) {
+      if (entry.expires && now > entry.expires) {
+        this.cache.delete(blobId);
+      }
+    }
+  }
+
+  destroy(): void {
+    clearInterval(this.cleanupInterval);
+    this.cache.clear();
+  }
+}
+
+/**
+ * Factory function to create Walrus storage service
+ */
+export function createWalrusStorage(
+  config: WalrusStorageConfig, 
+  enableCache: boolean = true
+): WalrusStorageService {
+  const cache = enableCache ? new MemoryWalrusCache() : undefined;
+  return new WalrusStorageServiceImpl(config, cache);
 }

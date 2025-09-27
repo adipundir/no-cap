@@ -9,6 +9,22 @@ export type Fact = {
   comments: number;
   author: string;
   updated: string;
+  // Walrus integration fields
+  walrusBlobId?: string; // Reference to full content stored in Walrus
+  contentHash?: string; // Hash of the content for integrity verification
+};
+
+// Extended fact type with full content for Walrus storage
+export type FullFact = Fact & {
+  fullContent?: string;
+  sources?: string[];
+  metadata: {
+    created: Date;
+    lastModified: Date;
+    version: number;
+    contentType: 'text/plain' | 'text/markdown' | 'text/html';
+    tags?: string[];
+  };
 };
 
 export type Tallies = {
