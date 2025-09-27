@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { MiniKit, WalletAuthInput } from '@worldcoin/minikit-js'
+import { MiniKit, WalletAuthInput, VerifyCommandInput, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
+import { useUnifiedContracts } from '@/hooks/use-unified-contracts'
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +28,8 @@ import {
   LogOut,
   Loader2,
   AlertCircle,
-  Coins
+  Coins,
+  CheckCircle
 } from 'lucide-react'
 
 export function Navbar() {
@@ -35,7 +37,10 @@ export function Navbar() {
   const [walletAddress, setWalletAddress] = useState<string>('')
   const [isConnecting, setIsConnecting] = useState(false)
   const [ethBalance, setEthBalance] = useState<string>('0.0000')
+  const [isVerified, setIsVerified] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
   const { toast } = useToast()
+  const { verifyAndRegister, checkVerificationStatus, setWalletConnection } = useUnifiedContracts()
 
   const fetchEthBalance = async (address: string) => {
     try {
@@ -49,6 +54,88 @@ export function Navbar() {
   const generateNonce = () => {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
   }
+
+  // Auto-verification function triggered after wallet connection
+  const handleAutoVerification = useCallback(async (address: string) => {
+    try {
+      // First check if user is already verified on-chain
+      await setWalletConnection(address)
+      const verified = await checkVerificationStatus()
+      
+      if (verified) {
+        setIsVerified(true)
+        toast({
+          type: 'info',
+          title: 'Already Verified',
+          description: 'Your World ID is already verified on-chain.',
+        })
+        return
+      }
+
+      // User not verified - trigger World ID verification automatically
+      setIsVerifying(true)
+      
+      toast({
+        type: 'info',
+        title: 'Verifying Humanity',
+        description: 'Please complete World ID verification to prove your humanity...',
+      })
+
+      const verifyPayload: VerifyCommandInput = {
+        action: process.env.NEXT_PUBLIC_ACTION_ID || 'humanhood',
+        signal: address,
+        verification_level: VerificationLevel.Orb
+      }
+
+      const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload)
+
+      if (finalPayload.status === 'error') {
+        toast({
+          type: 'error',
+          title: 'Verification Failed',
+          description: finalPayload.error_code || 'World ID verification failed. You can try again later.',
+        })
+        return
+      }
+
+      // World ID verification successful - now submit to blockchain
+      const result = finalPayload as ISuccessResult
+      
+      toast({
+        type: 'info',
+        title: 'Submitting to Blockchain',
+        description: 'Recording your verification on World Chain...',
+      })
+
+      const txHash = await verifyAndRegister(
+        result.merkle_root,
+        result.nullifier_hash,
+        Array.isArray(result.proof) ? result.proof : [result.proof]
+      )
+
+      setIsVerified(true)
+      
+      toast({
+        type: 'success',
+        title: 'Humanity Verified!',
+        description: `You're now verified on World Chain. TX: ${txHash.slice(0, 10)}...`,
+      })
+
+    } catch (error: any) {
+      console.error('Auto-verification error:', error)
+      
+      // Don't show error toast if user cancelled verification
+      if (!error.message?.includes('cancelled') && !error.message?.includes('denied')) {
+        toast({
+          type: 'error',
+          title: 'Verification Error',
+          description: 'Auto-verification failed. You can verify manually later.',
+        })
+      }
+    } finally {
+      setIsVerifying(false)
+    }
+  }, [toast, checkVerificationStatus, setWalletConnection, verifyAndRegister])
 
   // Check wallet connection status on mount
   useEffect(() => {
@@ -102,6 +189,10 @@ export function Navbar() {
       })
       
       console.log('World App wallet connected:', { address, signature, message })
+      
+      // Automatically trigger World ID verification after wallet connection
+      await handleAutoVerification(address)
+      
     } catch (error) {
       console.error('Wallet auth error:', error)
       toast({
@@ -112,7 +203,7 @@ export function Navbar() {
     } finally {
       setIsConnecting(false)
     }
-  }, [toast, fetchEthBalance])
+  }, [toast, fetchEthBalance, handleAutoVerification])
 
 
 
@@ -120,6 +211,8 @@ export function Navbar() {
     setWalletAddress('')
     setIsWalletConnected(false)
     setEthBalance('0.0000')
+    setIsVerified(false)
+    setIsVerifying(false)
     
     toast({
       type: 'info',
@@ -178,9 +271,21 @@ export function Navbar() {
                     <Button variant="outline" className="flex items-center space-x-2">
                       <Wallet className="h-4 w-4" />
                       <span>{formatAddress(walletAddress)}</span>
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        Connected
-                      </Badge>
+                      <div className="flex gap-1">
+                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          Connected
+                        </Badge>
+                        {isVerified && (
+                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            Verified
+                          </Badge>
+                        )}
+                        {isVerifying && (
+                          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                            Verifying...
+                          </Badge>
+                        )}
+                      </div>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-80">
@@ -190,9 +295,21 @@ export function Navbar() {
                           <Wallet className="h-4 w-4" />
                           World App Wallet
                         </h3>
-                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                          Connected
-                        </Badge>
+                        <div className="flex gap-1">
+                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            Connected
+                          </Badge>
+                          {isVerified && (
+                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                              Verified
+                            </Badge>
+                          )}
+                          {isVerifying && (
+                            <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                              Verifying...
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="space-y-3">
@@ -211,17 +328,59 @@ export function Navbar() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
-                          <Coins className="h-4 w-4 text-blue-500" />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                              ETH Balance
-                            </p>
-                            <p className="text-xs text-blue-700 dark:text-blue-300">
-                              {ethBalance} ETH
-                            </p>
-                          </div>
-                        </div>
+                                <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                                  <Coins className="h-4 w-4 text-blue-500" />
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                                      ETH Balance
+                                    </p>
+                                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                                      {ethBalance} ETH
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Verification Status */}
+                                <div className={`flex items-center gap-3 p-3 rounded-md ${
+                                  isVerified 
+                                    ? 'bg-blue-50 dark:bg-blue-900/20' 
+                                    : isVerifying 
+                                      ? 'bg-yellow-50 dark:bg-yellow-900/20'
+                                      : 'bg-orange-50 dark:bg-orange-900/20'
+                                }`}>
+                                  {isVerified ? (
+                                    <CheckCircle className="h-4 w-4 text-blue-500" />
+                                  ) : isVerifying ? (
+                                    <Loader2 className="h-4 w-4 text-yellow-500 animate-spin" />
+                                  ) : (
+                                    <AlertCircle className="h-4 w-4 text-orange-500" />
+                                  )}
+                                  <div className="flex-1">
+                                    <p className={`text-sm font-medium ${
+                                      isVerified 
+                                        ? 'text-blue-800 dark:text-blue-200' 
+                                        : isVerifying 
+                                          ? 'text-yellow-800 dark:text-yellow-200'
+                                          : 'text-orange-800 dark:text-orange-200'
+                                    }`}>
+                                      {isVerified ? 'World ID Verified' : isVerifying ? 'Verifying...' : 'Not Verified'}
+                                    </p>
+                                    <p className={`text-xs ${
+                                      isVerified 
+                                        ? 'text-blue-700 dark:text-blue-300' 
+                                        : isVerifying 
+                                          ? 'text-yellow-700 dark:text-yellow-300'
+                                          : 'text-orange-700 dark:text-orange-300'
+                                    }`}>
+                                      {isVerified 
+                                        ? 'Humanity verified on-chain' 
+                                        : isVerifying 
+                                          ? 'Please complete verification...'
+                                          : 'Connect wallet to auto-verify'
+                                      }
+                                    </p>
+                                  </div>
+                                </div>
 
 
                         <Button 
