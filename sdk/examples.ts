@@ -4,7 +4,7 @@
  * This file demonstrates how to use the NOCAP SDK to access verified facts
  */
 
-import { createClient, NOCAPClient, searchFacts, getFact } from './index';
+import { createClient, NOCAPClient, searchFacts, getFact, NOCAPFactDetails, NOCAPFact, NOCAPTag } from './index';
 
 // Example 1: Basic client setup and fact retrieval
 async function basicUsage() {
@@ -47,7 +47,7 @@ async function searchExamples() {
     console.log('\n--- Search by Keywords ---');
     const keywordResults = await client.searchByKeywords(['climate', 'warming'], { limit: 5 });
     console.log(`Found ${keywordResults.totalCount} facts about climate warming`);
-    keywordResults.facts.forEach(fact => {
+    keywordResults.facts.forEach((fact: NOCAPFactDetails) => {
       console.log(`- ${fact.title} (${fact.status})`);
     });
 
@@ -55,7 +55,7 @@ async function searchExamples() {
     console.log('\n--- Search by Tags ---');
     const tagResults = await client.searchByTags(['space', 'verified'], { limit: 5 });
     console.log(`Found ${tagResults.totalCount} verified space facts`);
-    tagResults.facts.forEach(fact => {
+    tagResults.facts.forEach((fact: NOCAPFactDetails) => {
       console.log(`- ${fact.title} by ${fact.author}`);
     });
 
@@ -72,7 +72,7 @@ async function searchExamples() {
     });
     
     console.log(`Found ${advancedResults.totalCount} verified AI facts since 2024`);
-    advancedResults.facts.forEach(fact => {
+    advancedResults.facts.forEach((fact: NOCAPFactDetails) => {
       console.log(`- ${fact.title}`);
       console.log(`  Summary: ${fact.summary.substring(0, 100)}...`);
     });
@@ -91,7 +91,7 @@ async function bulkOperations() {
   try {
     // First get some fact IDs
     const facts = await client.getFacts({ limit: 5 });
-    const factIds = facts.data.map(fact => fact.id);
+    const factIds = facts.data.map((fact: NOCAPFact) => fact.id);
 
     if (factIds.length > 0) {
       // Bulk retrieve facts
@@ -105,12 +105,12 @@ async function bulkOperations() {
       
       if (bulkResponse.errors.length > 0) {
         console.log('Errors encountered:');
-        bulkResponse.errors.forEach(error => {
+        bulkResponse.errors.forEach((error: { factId: string; error: string }) => {
           console.log(`- ${error.factId}: ${error.error}`);
         });
       }
 
-      bulkResponse.facts.forEach(fact => {
+      bulkResponse.facts.forEach((fact: NOCAPFactDetails) => {
         console.log(`- ${fact.title}`);
         if (fact.sources && fact.sources.length > 0) {
           console.log(`  Sources: ${fact.sources.length} available`);
@@ -210,7 +210,7 @@ async function statusFilteringExample() {
     console.log(`Flagged facts: ${flaggedFacts.totalCount}`);
 
     console.log('\nVerified fact examples:');
-    verifiedFacts.facts.slice(0, 3).forEach(fact => {
+    verifiedFacts.facts.slice(0, 3).forEach((fact: NOCAPFactDetails) => {
       console.log(`- ${fact.title} (${fact.votes} votes)`);
     });
 
@@ -237,7 +237,7 @@ async function convenienceFunctionsExample() {
       // Get details of first result using standalone function
       const fact = await getFact(searchResults.facts[0].id);
       console.log(`\nFirst result: ${fact.title}`);
-      console.log(`Tags: ${fact.tags.map(tag => tag.name).join(', ')}`);
+      console.log(`Tags: ${fact.tags.map((tag: NOCAPTag) => tag.name).join(', ')}`);
     }
 
   } catch (error) {
@@ -272,7 +272,7 @@ async function factCheckerExample() {
 
       if (results.facts.length > 0) {
         console.log(`Found ${results.totalCount} potentially related verified facts:`);
-        results.facts.forEach((fact, index) => {
+        results.facts.forEach((fact: NOCAPFactDetails, index: number) => {
           console.log(`${index + 1}. ${fact.title}`);
           console.log(`   Summary: ${fact.summary}`);
           console.log(`   Confidence indicators: ${fact.votes} votes, ${fact.comments} comments`);

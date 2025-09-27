@@ -338,7 +338,6 @@ export class NOCAPClient {
     const requestId = `req-${++this.requestCounter}-${Date.now()}`;
     
     const requestOptions: RequestInit = {
-      timeout: this.config.timeout,
       headers: {
         'User-Agent': this.config.userAgent,
         'X-Request-ID': requestId,

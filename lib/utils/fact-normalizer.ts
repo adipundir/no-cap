@@ -68,7 +68,7 @@ export function normalizeFullFact(fact: FullFact): FullFact {
     ...fact,
     metadata: {
       ...fact.metadata,
-      tags: fact.metadata.tags ? normalizeTags(fact.metadata.tags) : []
+      tags: fact.metadata.tags ? fact.metadata.tags : []
     }
   };
 }

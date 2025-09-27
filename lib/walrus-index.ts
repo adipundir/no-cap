@@ -466,6 +466,13 @@ export class WalrusIndexManager {
   }
 
   /**
+   * Get indexed fact by ID
+   */
+  getFact(factId: string): IndexedFact | null {
+    return this.factIndex.getFact(factId);
+  }
+
+  /**
    * Update fact in both Walrus and index
    */
   async updateFact(factId: string, updates: Partial<FactContent>): Promise<FactContentBlob> {

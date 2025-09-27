@@ -9,7 +9,14 @@
  */
 
 export { NOCAPClient } from './client';
-export { NOCAPConfig, NOCAPClientOptions } from './types';
+export type { NOCAPConfig, NOCAPClientOptions } from './types';
+import type { 
+  NOCAPConfig, 
+  NOCAPClientOptions, 
+  NOCAPPaginationOptions,
+  NOCAPSearchQuery 
+} from './types';
+import { NOCAPClient } from './client';
 export type {
   NOCAPFact,
   NOCAPFactDetails,

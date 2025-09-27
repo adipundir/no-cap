@@ -53,8 +53,9 @@ export class MockWalrusSDK {
     
     // If not in memory, try to load from disk
     if (!data) {
-      data = this.loadBlobFromDisk(blobId);
-      if (data) {
+      const diskData = this.loadBlobFromDisk(blobId);
+      if (diskData) {
+        data = diskData;
         this.mockStorage.set(blobId, data);
       }
     }
