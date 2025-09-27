@@ -39,8 +39,8 @@ export default function Home() {
             <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3 max-w-4xl mx-auto">
               <Card variant="module" className="p-4">
                 <div className="flex flex-col items-center text-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center">
-                    <ShieldCheck className="h-5 w-5" />
+                  <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center shrink-0">
+                    <ShieldCheck className="h-5 w-5 flex-shrink-0" />
                   </div>
                   <div>
                     <div className="text-sm font-medium">Human-verified</div>
@@ -50,8 +50,8 @@ export default function Home() {
               </Card>
               <Card variant="module" className="p-4">
                 <div className="flex flex-col items-center text-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center">
-                    <Code className="h-5 w-5" />
+                  <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center shrink-0">
+                    <Code className="h-5 w-5 flex-shrink-0" />
                   </div>
                   <div>
                     <div className="text-sm font-medium">Developer API</div>
@@ -61,8 +61,8 @@ export default function Home() {
               </Card>
               <Card variant="module" className="p-4">
                 <div className="flex flex-col items-center text-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center">
-                    <Coins className="h-5 w-5" />
+                  <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center shrink-0">
+                    <Coins className="h-5 w-5 flex-shrink-0" />
                   </div>
                   <div>
                     <div className="text-sm font-medium">On-chain rewards</div>
