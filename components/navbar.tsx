@@ -49,11 +49,6 @@ export default function Navbar() {
       setEthBalance(balances.eth)
       setWldBalance(balances.wld)
 
-      // Show info if using fallback method
-      if (balances.error && balances.error.includes('free RPC')) {
-        console.info('💡 Add ONEINCH_API_KEY for enhanced balance features')
-      }
-
     } catch (error) {
       console.error('Failed to fetch balances:', error)
       setEthBalance('0.0000')
