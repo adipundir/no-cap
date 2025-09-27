@@ -35,13 +35,13 @@ const Toast = React.forwardRef<
   const getStyles = () => {
     switch (type) {
       case 'success':
-        return 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
+        return 'border-green-200 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-900 dark:text-green-50'
       case 'error':
-        return 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
+        return 'border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-900 dark:text-red-50'
       case 'warning':
-        return 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20'
+        return 'border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-900 dark:text-yellow-50'
       default:
-        return 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20'
+        return 'border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-900 dark:text-blue-50'
     }
   }
 
