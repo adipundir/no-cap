@@ -1,4 +1,4 @@
-import type { ContextComment } from '@/types/fact';
+import type { ContextComment } from '@/types/walrus';
 import type { WalrusBlobMetadata } from '@/types/walrus';
 
 export type StoredCommentRecord = {
