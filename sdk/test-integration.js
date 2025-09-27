@@ -11,7 +11,7 @@ async function testSDKIntegration() {
   console.log('🧪 Testing NOCAP SDK Integration...\n');
 
   // Simulate SDK functionality by calling the API directly
-  const baseUrl = 'http://localhost:3000/api';
+  const baseUrl = 'http://localhost:3001/api';
   
   try {
     // Test 1: Health Check
