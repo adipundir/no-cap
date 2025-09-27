@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -7,22 +7,82 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Clock, TriangleAlert, ArrowLeft, GraduationCap } from "lucide-react";
 import { DEFAULT_ECON_PARAMS, previewReturn } from "@/lib/economics";
-import { SAMPLE_TALLIES, SAMPLE_CONTEXTS } from "@/components/data/placeholders";
+import type { Fact } from "@/types/fact";
+import type { ContextComment } from "@/types/walrus";
+
+function StatusBadge({ status }: { status: Fact["status"] }) {
+  if (status === "verified") {
+    return (
+      <Badge variant="outline" className="flex items-center gap-2">
+        <Shield className="h-4 w-4" /> Verified
+      </Badge>
+    );
+  }
+  if (status === "review") {
+    return (
+      <Badge variant="outline" className="flex items-center gap-2">
+        <Clock className="h-4 w-4" /> Under review
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="flex items-center gap-2">
+      <TriangleAlert className="h-4 w-4" /> Flagged
+    </Badge>
+  );
+}
 
 export default function FactDetail() {
   const params = useParams();
   const router = useRouter();
   const id = Array.isArray(params?.id) ? params?.id[0] : (params?.id as string);
 
-  const fact = useMemo(() => ({
-    id,
-    title: "Example fact title",
-    summary: "Short description of the claim. Stored media/comments would live in Walrus.",
-    status: "review" as "verified" | "review" | "flagged",
-  }), [id]);
+  const [fact, setFact] = useState<Fact | null>(null);
+  const [contexts, setContexts] = useState<ContextComment[]>([]);
+  const [choice, setChoice] = useState<"cap" | "nocap" | null>(null);
+  const [stake, setStake] = useState(5);
+  const [context, setContext] = useState("");
+  const [isSubmittingContext, setIsSubmittingContext] = useState(false);
 
-  // demo tallies for UI only
-  const tallies = useMemo(() => SAMPLE_TALLIES, []);
+  useEffect(() => {
+    async function loadFact() {
+      try {
+        const response = await fetch(`/api/facts/${id}`);
+        if (!response.ok) {
+          throw new Error("Fact not found");
+        }
+        const data = await response.json();
+        setFact(data.fact);
+      } catch (error) {
+        console.error("Failed to load fact:", error);
+        router.push("/feed");
+      }
+    }
+
+    async function loadComments() {
+      try {
+        const response = await fetch(`/api/comments?factId=${id}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        setContexts(data.comments || []);
+      } catch (error) {
+        console.error("Failed to load comments:", error);
+      }
+    }
+
+    if (id) {
+      loadFact();
+      loadComments();
+    }
+  }, [id, router]);
+
+  const tallies = useMemo(() => ({
+    capVotes: fact?.votes ?? 0,
+    noCapVotes: fact ? Math.max(0, fact.votes / 2) : 0,
+    capStake: 320,
+    noCapStake: 80,
+    posterStake: 20,
+  }), [fact]);
   const totalVotes = tallies.capVotes + tallies.noCapVotes;
   const votingStake = tallies.capStake + tallies.noCapStake;
   const totalStake = votingStake + tallies.posterStake;
@@ -30,13 +90,48 @@ export default function FactDetail() {
   const noCapPct = 100 - capPct;
   const leader = tallies.capVotes >= tallies.noCapVotes ? "Caps" : "No Caps";
 
-  const [choice, setChoice] = useState<"cap" | "nocap" | null>(null);
-  const [stake, setStake] = useState(5);
-  const [context, setContext] = useState("");
-
   const preview = choice
     ? previewReturn(choice, Math.max(0, stake), tallies, DEFAULT_ECON_PARAMS, 1)
     : null;
+
+  async function handleContextSubmit() {
+    if (!fact || context.trim().length < 10 || isSubmittingContext) return;
+    setIsSubmittingContext(true);
+    try {
+      const commentId = crypto.randomUUID();
+      const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: commentId,
+          factId: fact.id,
+          text: context,
+          author: "anon",
+          created: new Date().toISOString(),
+          votes: 0,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit context");
+      }
+
+      setContext("");
+      const data = await response.json();
+      setContexts((prev) => [...prev, data.comment]);
+    } catch (error) {
+      console.error("Failed to submit context:", error);
+      alert("Failed to submit context. Please try again.");
+    } finally {
+      setIsSubmittingContext(false);
+    }
+  }
+
+  if (!fact) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen">
@@ -51,9 +146,14 @@ export default function FactDetail() {
           <div className="module-content space-y-3">
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-semibold">{fact.title}</h1>
-              <Badge variant="outline">Under review</Badge>
+              <StatusBadge status={fact.status} />
             </div>
             <p className="text-sm text-muted-foreground">{fact.summary}</p>
+            {fact.walrusBlobId && (
+              <div className="text-xs text-muted-foreground">
+                Walrus blob ID: <span className="font-mono">{fact.walrusBlobId}</span>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -103,7 +203,12 @@ export default function FactDetail() {
               </div>
             </div>
             <div className="module-footer flex items-center justify-end">
-              <Button disabled={!choice || stake <= 0 || context.trim().length < 10}>Submit</Button>
+              <Button
+                disabled={!choice || stake <= 0 || context.trim().length < 10 || isSubmittingContext}
+                onClick={handleContextSubmit}
+              >
+                {isSubmittingContext ? "Submitting..." : "Submit"}
+              </Button>
             </div>
           </Card>
 
@@ -156,8 +261,19 @@ export default function FactDetail() {
             <h2 className="text-base font-semibold">Contexts</h2>
           </div>
           <div className="module-content space-y-4">
-            {SAMPLE_CONTEXTS.map((c) => (
-              <div key={c.id} className="rounded-lg border bg-background px-3 py-2 text-sm">{c.text}</div>
+            {contexts.length === 0 && (
+              <div className="rounded-lg border bg-background px-3 py-2 text-sm text-muted-foreground">
+                No contexts yet. Start the discussion by sharing your take.
+              </div>
+            )}
+            {contexts.map((c) => (
+              <div key={c.id} className="rounded-lg border bg-background px-3 py-2 text-sm">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                  <span>{c.author || "anon"}</span>
+                  <span>{new Date(c.created).toLocaleString()}</span>
+                </div>
+                <p>{c.text}</p>
+              </div>
             ))}
           </div>
         </Card>

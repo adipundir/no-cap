@@ -2,12 +2,9 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shield, Clock, TriangleAlert, MessageSquare, ThumbsUp, ArrowLeft, Plus, GraduationCap } from "lucide-react";
-import { SAMPLE_FACTS } from "@/components/data/placeholders";
+import { Shield, Clock, TriangleAlert, MessageSquare, GraduationCap } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { Fact } from "@/types/fact";
-
-// Using centralized placeholders to ease real-data swap later
-const sampleFacts = SAMPLE_FACTS;
 
 function StatusBadge({ status }: { status: Fact["status"] }) {
   if (status === "verified") {
@@ -32,12 +29,31 @@ function StatusBadge({ status }: { status: Fact["status"] }) {
 }
 
 export default function FeedPage() {
+  const [facts, setFacts] = useState<Fact[]>([]);
+
+  useEffect(() => {
+    async function fetchFacts() {
+      try {
+        const response = await fetch("/api/facts");
+        if (!response.ok) {
+          throw new Error("Failed to fetch facts");
+        }
+        const data = await response.json();
+        setFacts(data.facts || []);
+      } catch (error) {
+        console.error("Failed to load facts:", error);
+      }
+    }
+
+    fetchFacts();
+  }, []);
+
   return (
     <div className="min-h-screen">
       <div className="mx-auto max-w-5xl px-4 py-8">
         {/* Feed list */}
         <div className="space-y-4">
-          {sampleFacts.map((f) => (
+          {facts.map((f) => (
             <Card key={f.id} variant="module" className="p-0">
               <div className="module-content">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -48,6 +64,11 @@ export default function FeedPage() {
                       <span>by {f.author}</span>
                       <span>·</span>
                       <span>{f.updated}</span>
+                      {f.walrusBlobId && (
+                        <span className="inline-flex items-center gap-1 text-[10px] uppercase">
+                          Walrus: {f.walrusBlobId.slice(0, 6)}…
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

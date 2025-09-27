@@ -4,20 +4,69 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
+import { nanoid } from "nanoid";
 
 export default function SubmitPage() {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [stake, setStake] = useState(10);
-  const [durationHrs, setDurationHrs] = useState(48); // fact lifeline in hours (28-60)
+  const [durationHrs, setDurationHrs] = useState(48);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
-  // No real submission yet; this is a visual-only stub
   const isValid =
     title.trim().length > 10 &&
     summary.trim().length > 20 &&
     stake > 0 &&
     durationHrs >= 28 &&
     durationHrs <= 60;
+
+  async function handleSubmit() {
+    if (!isValid || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const factId = nanoid();
+
+    try {
+      const response = await fetch("/api/facts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: factId,
+          title,
+          summary,
+          fullContent: summary,
+          sources: [],
+          status: "review",
+          votes: 0,
+          comments: 0,
+          author: "anon",
+          updated: new Date().toISOString(),
+          metadata: {
+            author: "anon",
+            created: new Date().toISOString(),
+            updated: new Date().toISOString(),
+            version: 1,
+            contentType: "text/plain",
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit fact");
+      }
+
+      router.push(`/facts/${factId}`);
+    } catch (error) {
+      console.error("Failed to submit fact:", error);
+      alert("Failed to submit fact. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="min-h-screen">
@@ -86,7 +135,9 @@ export default function SubmitPage() {
           </div>
           <div className="module-footer flex items-center justify-between">
             <Link href="/feed" className="text-sm text-muted-foreground hover:underline">Cancel</Link>
-            <Button disabled={!isValid}>Submit fact</Button>
+            <Button disabled={!isValid || isSubmitting} onClick={handleSubmit}>
+              {isSubmitting ? "Submitting..." : "Submit fact"}
+            </Button>
           </div>
         </Card>
       </div>

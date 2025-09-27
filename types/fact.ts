@@ -12,6 +12,7 @@ export type Fact = {
   // Walrus integration fields
   walrusBlobId?: string; // Reference to full content stored in Walrus
   contentHash?: string; // Hash of the content for integrity verification
+  metadata?: FullFact["metadata"]; // Optional metadata when full fact is available
 };
 
 // Extended fact type with full content for Walrus storage
