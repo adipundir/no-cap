@@ -60,6 +60,20 @@ export function Navbar() {
     try {
       // First check if user is already verified on-chain
       await setWalletConnection(address)
+      
+      // Check if contracts are deployed (not 0x0000...)
+      const contractsDeployed = process.env.NEXT_PUBLIC_CONTRACTS_DEPLOYED === 'true'
+      
+      if (!contractsDeployed) {
+        console.log('Contracts not deployed yet, skipping auto-verification')
+        toast({
+          type: 'info',
+          title: 'Welcome!',
+          description: 'Wallet connected successfully. Contract deployment pending for full verification.',
+        })
+        return
+      }
+      
       const verified = await checkVerificationStatus()
       
       if (verified) {
@@ -124,8 +138,14 @@ export function Navbar() {
     } catch (error: any) {
       console.error('Auto-verification error:', error)
       
-      // Don't show error toast if user cancelled verification
-      if (!error.message?.includes('cancelled') && !error.message?.includes('denied')) {
+      // Handle specific contract errors
+      if (error.message?.includes('0x0000') || error.message?.includes('not deployed')) {
+        toast({
+          type: 'info',
+          title: 'Contract Pending',
+          description: 'Smart contracts are being deployed. Verification will be available soon.',
+        })
+      } else if (!error.message?.includes('cancelled') && !error.message?.includes('denied')) {
         toast({
           type: 'error',
           title: 'Verification Error',
@@ -396,23 +416,23 @@ export function Navbar() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button 
-                  onClick={handleWalletConnect}
-                  disabled={isConnecting}
-                  className="flex items-center space-x-2"
-                >
-                  {isConnecting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Connecting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="h-4 w-4" />
-                      <span>Connect Wallet</span>
-                    </>
-                  )}
-                </Button>
+                        <Button 
+                          onClick={handleWalletConnect}
+                          disabled={isConnecting}
+                          className="flex items-center space-x-2"
+                        >
+                          {isConnecting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Signing In...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Wallet className="h-4 w-4" />
+                              <span>Sign In</span>
+                            </>
+                          )}
+                        </Button>
               )}
             </div>
 
@@ -429,24 +449,24 @@ export function Navbar() {
                   <span>{formatAddress(walletAddress)}</span>
                 </Button>
               ) : (
-                <Button
-                  onClick={handleWalletConnect}
-                  disabled={isConnecting}
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  {isConnecting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Connecting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="h-4 w-4" />
-                      <span>Connect</span>
-                    </>
-                  )}
-                </Button>
+                        <Button
+                          onClick={handleWalletConnect}
+                          disabled={isConnecting}
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          {isConnecting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Signing In...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Wallet className="h-4 w-4" />
+                              <span>Sign In</span>
+                            </>
+                          )}
+                        </Button>
               )}
             </div>
 
