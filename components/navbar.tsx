@@ -34,15 +34,15 @@ export function Navbar() {
   const [isWalletConnected, setIsWalletConnected] = useState(false)
   const [walletAddress, setWalletAddress] = useState<string>('')
   const [isConnecting, setIsConnecting] = useState(false)
-  const [pyusdBalance, setPyusdBalance] = useState<string>('0')
+  const [wpyusdBalance, setWpyusdBalance] = useState<string>('0')
   const { toast } = useToast()
 
-  const fetchPyusdBalance = async (address: string) => {
+  const fetchWpyusdBalance = async (address: string) => {
     try {
-      // Mock PYUSD balance - in real app, fetch from contract/API
-      setPyusdBalance('100.50')
+      // Mock wPYUSD balance - in real app, fetch from contract/API
+      setWpyusdBalance('100.50')
     } catch (error) {
-      console.error('Error fetching PYUSD balance:', error)
+      console.error('Error fetching wPYUSD balance:', error)
     }
   }
 
@@ -73,7 +73,7 @@ export function Navbar() {
       
       const walletAuthPayload: WalletAuthInput = {
         nonce,
-        statement: 'Connect to NOCAP for community-driven fact verification on Ethereum Sepolia',
+        statement: 'Connect to NOCAP for community-driven fact verification on World Chain',
         expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
         notBefore: new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
         requestId: Date.now().toString()
@@ -93,7 +93,7 @@ export function Navbar() {
       const { address, signature, message } = finalPayload
       setWalletAddress(address)
       setIsWalletConnected(true)
-      await fetchPyusdBalance(address)
+      await fetchWpyusdBalance(address)
       
       toast({
         type: 'success',
@@ -206,7 +206,7 @@ export function Navbar() {
                               {walletAddress}
                             </p>
                             <p className="text-xs text-green-600 dark:text-green-400">
-                              Ethereum Sepolia Testnet
+                              World Chain Mainnet
                             </p>
                           </div>
                         </div>
@@ -215,10 +215,10 @@ export function Navbar() {
                           <Coins className="h-4 w-4 text-blue-500" />
                           <div className="flex-1">
                             <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                              PYUSD Balance
+                              wPYUSD Balance
                             </p>
                             <p className="text-xs text-blue-700 dark:text-blue-300">
-                              {pyusdBalance} PYUSD
+                              {wpyusdBalance} wPYUSD
                             </p>
                           </div>
                         </div>

@@ -4,75 +4,56 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useRouter } from "next/navigation";
-import { nanoid } from "nanoid";
+import { useWorldChainContracts } from "@/hooks/use-world-chain-contracts";
 
 export default function SubmitPage() {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
-  const [stake, setStake] = useState(10);
-  const [durationHrs, setDurationHrs] = useState(48);
+  const [stake, setStake] = useState(0);
+  const [enableStaking, setEnableStaking] = useState(false);
+  const [durationHrs, setDurationHrs] = useState(48); // fact lifeline in hours (28-60)
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const router = useRouter();
+  const { submitFact, submitFactWithStake, isLoading } = useWorldChainContracts();
 
   const isValid =
     title.trim().length > 10 &&
     summary.trim().length > 20 &&
+    (!enableStaking || stake > 0) &&
     durationHrs >= 28 &&
     durationHrs <= 60;
 
-  async function handleSubmit() {
-    if (!isValid || isSubmitting) return;
+  const handleSubmit = async () => {
+    if (!isValid || isSubmitting || isLoading) return;
 
     setIsSubmitting(true);
-    const factId = nanoid();
-
     try {
-      const response = await fetch("/api/facts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: factId,
-          title,
-          summary,
-          fullContent: summary,
-          sources: [],
-          status: "review",
-          votes: 0,
-          comments: 0,
-          author: "anon",
-          updated: new Date().toISOString(),
-          metadata: {
-            author: "anon",
-            created: new Date().toISOString(),
-            updated: new Date().toISOString(),
-            version: 1,
-            contentType: "text/plain",
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to submit fact");
+      let txHash;
+      if (enableStaking && stake > 0) {
+        txHash = await submitFactWithStake(title, summary, stake.toString());
+      } else {
+        txHash = await submitFact(title, summary);
       }
-
-      router.push(`/facts/${factId}`);
+      console.log('Fact submitted successfully:', txHash);
+      
+      // Reset form
+      setTitle("");
+      setSummary("");
+      setStake(0);
+      setEnableStaking(false);
+      setDurationHrs(48);
     } catch (error) {
-      console.error("Failed to submit fact:", error);
-      alert("Failed to submit fact. Please try again.");
+      console.error('Failed to submit fact:', error);
     } finally {
       setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen">
       <div className="mx-auto max-w-3xl px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Create a fact</h1>
-          <Badge variant="outline">No stake required</Badge>
+          <Badge variant="outline">{enableStaking ? 'Optional ETH Stake' : 'Free Submission'}</Badge>
         </div>
 
         <Card variant="module" className="p-0">
@@ -96,20 +77,54 @@ export default function SubmitPage() {
                 onChange={(e) => setSummary(e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="md:col-span-1">
-                <label className="mb-1 block text-sm font-medium">Stake (PYUD) <span className="text-xs text-muted-foreground">- Optional</span></label>
+            {/* Optional Staking */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
                 <input
-                  type="number"
-                  min={0}
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
-                  value={stake}
-                  onChange={(e) => setStake(parseInt(e.target.value || "0", 10))}
+                  type="checkbox"
+                  id="enableStaking"
+                  checked={enableStaking}
+                  onChange={(e) => setEnableStaking(e.target.checked)}
+                  className="rounded border-gray-300"
                 />
+                <label htmlFor="enableStaking" className="text-sm font-medium">
+                  Add ETH stake (optional)
+                </label>
               </div>
-              <div className="md:col-span-2 text-sm text-muted-foreground">
-                Optional stake to show confidence in your claim. Higher stakes may increase visibility and credibility.
-              </div>
+              
+              {enableStaking && (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="md:col-span-1">
+                    <label className="mb-1 block text-sm font-medium">Stake (ETH)</label>
+                    <input
+                      type="number"
+                      min={0.001}
+                      step={0.001}
+                      className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                      value={stake}
+                      onChange={(e) => setStake(parseFloat(e.target.value || "0"))}
+                      placeholder="0.01"
+                    />
+                  </div>
+                  <div className="md:col-span-2 text-sm text-muted-foreground">
+                    <p className="mb-2">🎯 <strong>Why stake ETH?</strong></p>
+                    <ul className="text-xs space-y-1">
+                      <li>• Higher visibility for your fact claim</li>
+                      <li>• Earn rewards if your fact is verified as true</li>
+                      <li>• Show confidence in your submission</li>
+                      <li>• Help prevent spam and low-quality content</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+              
+              {!enableStaking && (
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-md">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    ✨ <strong>Free submission!</strong> No stake required. Your fact will still be reviewed by the community.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -134,8 +149,11 @@ export default function SubmitPage() {
           </div>
           <div className="module-footer flex items-center justify-between">
             <Link href="/feed" className="text-sm text-muted-foreground hover:underline">Cancel</Link>
-            <Button disabled={!isValid || isSubmitting} onClick={handleSubmit}>
-              {isSubmitting ? "Submitting..." : "Submit fact"}
+            <Button 
+              disabled={!isValid || isSubmitting || isLoading}
+              onClick={handleSubmit}
+            >
+              {isSubmitting || isLoading ? 'Submitting...' : enableStaking ? `Submit with ${stake} ETH stake` : 'Submit fact (free)'}
             </Button>
           </div>
         </Card>

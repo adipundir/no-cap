@@ -17,7 +17,7 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
   const [isConnected, setIsConnected] = useState(false)
   const [walletAddress, setWalletAddress] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
-  const [pyusdBalance, setPyusdBalance] = useState<string>('0')
+  const [wpyusdBalance, setWpyusdBalance] = useState<string>('0')
 
   // Check if already connected on mount
   useEffect(() => {
@@ -26,15 +26,15 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
     // This effect can be used for other initialization if needed
   }, [])
 
-  const fetchPyusdBalance = async (address: string) => {
+  const fetchWpyusdBalance = async (address: string) => {
     try {
-      // This would fetch PYUSD balance from the connected network
+      // This would fetch wPYUSD balance from World Chain
       // For demo purposes, we'll simulate this
-      console.log('Fetching PYUSD balance for:', address)
-      // In reality, you'd call the PYUSD contract or use an API
-      setPyusdBalance('100.50') // Mock balance
+      console.log('Fetching wPYUSD balance for:', address)
+      // In reality, you'd call the wPYUSD contract or use an API
+      setWpyusdBalance('100.50') // Mock balance
     } catch (error) {
-      console.error('Error fetching PYUSD balance:', error)
+      console.error('Error fetching wPYUSD balance:', error)
     }
   }
 
@@ -56,7 +56,7 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
       
       const walletAuthPayload: WalletAuthInput = {
         nonce,
-        statement: 'Connect to NOCAP for community-driven fact verification on Ethereum Sepolia',
+        statement: 'Connect to NOCAP for community-driven fact verification on World Chain',
         expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days
         notBefore: new Date(new Date().getTime() - 24 * 60 * 60 * 1000), // 24 hours ago
         requestId: Date.now().toString()
@@ -75,8 +75,8 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
       setWalletAddress(address)
       setIsConnected(true)
       
-      // Fetch PYUSD balance
-      await fetchPyusdBalance(address)
+      // Fetch wPYUSD balance
+      await fetchWpyusdBalance(address)
       
       console.log('World App wallet connected:', {
         address,
@@ -101,7 +101,7 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
     setWalletAddress('')
     setIsConnected(false)
     setErrorMessage('')
-    setPyusdBalance('0')
+    setWpyusdBalance('0')
   }, [])
 
   const formatAddress = (address: string) => {
@@ -127,8 +127,8 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
         <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
             {isConnected 
-              ? 'Your World App wallet is connected to Ethereum Sepolia testnet.'
-              : 'Connect your built-in World App wallet for Ethereum Sepolia transactions.'
+              ? 'Your World App wallet is connected to World Chain with gas sponsorship.'
+              : 'Connect your built-in World App wallet for seamless World Chain transactions.'
             }
           </p>
 
@@ -155,24 +155,22 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
                 </Button>
               </div>
 
-              {/* PYUSD Balance */}
+              {/* wPYUSD Balance */}
               <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                 <Coins className="h-4 w-4 text-blue-500" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                    PYUSD Balance
+                    wPYUSD Balance
                   </p>
                   <p className="text-xs text-blue-700 dark:text-blue-300">
-                    {pyusdBalance} PYUSD
+                    {wpyusdBalance} wPYUSD
                   </p>
                 </div>
                 <a
-                  href="https://cloud.google.com/application/web3/faucet/solana"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="/bridge"
                   className="text-xs text-blue-600 hover:text-blue-800 underline"
                 >
-                  Get Testnet PYUSD
+                  Bridge PYUSD
                 </a>
               </div>
 
@@ -181,11 +179,11 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                   <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
-                    Connected to Ethereum Sepolia
+                    Connected to World Chain
                   </p>
                 </div>
                 <p className="text-xs text-purple-700 dark:text-purple-300 mt-1">
-                  Testnet • Chain ID: 11155111
+                  Mainnet • Chain ID: 480 • Gas Sponsored
                 </p>
               </div>
             </div>
@@ -224,31 +222,31 @@ export function NativeWorldWallet({ onAuthSuccess, onAuthError }: NativeWorldWal
             <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
               <div>
                 <p className="font-medium">Network</p>
-                <p>Ethereum Sepolia</p>
+                <p>World Chain</p>
               </div>
               <div>
-                <p className="font-medium">Chain ID</p>
-                <p>11155111</p>
+                <p className="font-medium">Gas Fees</p>
+                <p>Sponsored</p>
               </div>
             </div>
             
             <div className="mt-3 flex gap-2">
               <a
-                href={`https://sepolia.etherscan.io/address/${walletAddress}`}
+                href={`https://worldscan.org/address/${walletAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-600 hover:text-blue-800 underline"
               >
-                View on Etherscan
+                View on Worldscan
               </a>
               <span className="text-xs text-muted-foreground">•</span>
               <a
-                href="https://sepoliafaucet.com"
+                href="https://bridge.worldchain.org"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-600 hover:text-blue-800 underline"
               >
-                Get Testnet ETH
+                Bridge Assets
               </a>
             </div>
           </div>

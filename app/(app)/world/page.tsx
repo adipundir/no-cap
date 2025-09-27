@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { WorldAppStatus } from '@/components/world/world-app-status'
 import { NativeWorldWallet } from '@/components/world/native-world-wallet'
-import { WorldIDVerification } from '@/components/world/world-id-verification'
+import { EnhancedWorldIDVerification } from '@/components/world/enhanced-world-id-verification'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { VerificationLevel } from '@worldcoin/minikit-js'
@@ -112,13 +112,15 @@ export default function WorldMiniApp() {
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <WorldIDVerification
-                  action="humanhood"
-                  signal={walletAddress}
-                  verificationLevel={VerificationLevel.Orb}
-                  onSuccess={handleVerificationSuccess}
-                  onError={handleVerificationError}
-                />
+            <EnhancedWorldIDVerification
+              walletAddress={walletAddress}
+              action="humanhood"
+              signal={walletAddress}
+              verificationLevel={VerificationLevel.Orb}
+              enableOnChainVerification={true}
+              onSuccess={handleVerificationSuccess}
+              onError={handleVerificationError}
+            />
 
                 <Card className="p-6">
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">

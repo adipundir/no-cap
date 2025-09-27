@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
-import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { CheckCircle, AlertCircle, Loader2, Shield } from 'lucide-react'
+import { useWorldChainContracts } from '@/hooks/use-world-chain-contracts'
 
 interface WorldIDVerificationProps {
   action: string
