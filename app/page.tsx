@@ -66,7 +66,7 @@ export default function Home() {
                   </div>
                   <div className="flex-1 text-center">
                     <div className="text-sm font-medium">On-chain rewards</div>
-                    <p className="text-xs text-muted-foreground">Stake PYUSD. Earn for correct calls.</p>
+                    <p className="text-xs text-muted-foreground">Stake ETH. Earn for correct calls.</p>
                   </div>
                 </div>
               </Card>

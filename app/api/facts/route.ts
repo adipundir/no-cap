@@ -96,14 +96,3 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * GET /api/facts/:id
- * Retrieve fact metadata and Walrus blob reference
- */
-export async function fetchFact(id: string): Promise<Fact | null> {
-  const record = getFactRecord(id);
-  if (!record) {
-    return null;
-  }
-  return record.fact;
-}

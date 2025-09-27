@@ -26,7 +26,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams): Promi
       walrusBlobId: fact.walrusBlobId 
     });
   } catch (error) {
-    console.error(`Failed to retrieve fact ${await params.id} from Walrus:`, error);
+    console.error(`Failed to retrieve fact from Walrus:`, error);
     return NextResponse.json({ error: 'Failed to retrieve fact' }, { status: 500 });
   }
 }
