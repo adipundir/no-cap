@@ -433,7 +433,7 @@ export class WalrusIndexManager {
       console.log('🔍 Scanning Walrus for existing facts...');
       
       // Import the comprehensive facts to check against
-      const { SAMPLE_FACTS } = await import('@/lib/seed/comprehensive-facts');
+      const { COMPREHENSIVE_SAMPLE_FACTS: SAMPLE_FACTS } = await import('@/lib/seed/comprehensive-facts');
       let discoveredCount = 0;
       
       for (const sampleFact of SAMPLE_FACTS) {
@@ -458,7 +458,7 @@ export class WalrusIndexManager {
                 updated: new Date(sampleFact.metadata.lastModified),
                 version: sampleFact.metadata.version,
               },
-              tags: this.normalizeTagsForDiscovery(sampleFact.metadata.tags),
+              tags: this.normalizeTagsForDiscovery(sampleFact.metadata.tags || []),
               keywords: this.extractKeywordsFromText(
                 `${sampleFact.title} ${sampleFact.summary} ${sampleFact.fullContent}`
               ),
@@ -523,7 +523,7 @@ export class WalrusIndexManager {
   private async seedInitialFactsToWalrus(): Promise<void> {
     console.log('🌱 Seeding initial facts to Walrus...');
     
-    const { SAMPLE_FACTS } = await import('@/lib/seed/comprehensive-facts');
+    const { COMPREHENSIVE_SAMPLE_FACTS: SAMPLE_FACTS } = await import('@/lib/seed/comprehensive-facts');
     let seededCount = 0;
     
     for (const fact of SAMPLE_FACTS.slice(0, 5)) { // Seed first 5 facts

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { getWalrusIndexManager } from '@/lib/walrus-index';
-import type { NOCAPBulkQuery, NOCAPBulkResponse } from '@/sdk/types';
+import type { NOCAPBulkQuery, NOCAPBulkResponse } from '@/sdk/src/types';
 
 /**
  * POST /api/facts/bulk
