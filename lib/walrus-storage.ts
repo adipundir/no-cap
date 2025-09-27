@@ -1,4 +1,5 @@
 import { WalrusSDK } from '@hibernuts/walrus-sdk';
+import { MockWalrusSDK, shouldUseMockWalrus } from './walrus-mock';
 import {
   WalrusStorageService,
   WalrusStorageConfig,
@@ -33,11 +34,17 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
   constructor(config: WalrusStorageConfig, cache?: WalrusCache) {
     this.config = config;
     this.cache = cache;
-    this.walrusSDK = new WalrusSDK({
-      aggregator: config.aggregatorUrl,
-      publisher: config.publisherUrl,
-      apiUrl: config.apiUrl || config.aggregatorUrl,
-    });
+    
+    if (shouldUseMockWalrus) {
+      this.walrusSDK = new MockWalrusSDK(config) as any;
+      console.log('Using mock Walrus SDK for development');
+    } else {
+      this.walrusSDK = new WalrusSDK({
+        aggregator: config.aggregatorUrl,
+        publisher: config.publisherUrl,
+        apiUrl: config.apiUrl || config.aggregatorUrl,
+      });
+    }
   }
 
   /**
