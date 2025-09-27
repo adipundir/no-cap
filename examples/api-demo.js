@@ -3,11 +3,14 @@
 /**
  * No-Cap Facts API Demo
  * 
- * This script demonstrates the key features of the No-Cap Facts API
- * Run with: node examples/api-demo.js
+ * This script demonstrates both centralized and decentralized access to No-Cap Facts
+ * 
+ * Centralized (requires API key): node examples/api-demo.js --mode=centralized
+ * Decentralized (no API key): node examples/api-demo.js --mode=decentralized
  */
 
 const { NoCapSDK } = require('../lib/sdk/no-cap-sdk.ts');
+const { WalrusDirectSDK } = require('../lib/sdk/walrus-direct-sdk.ts');
 
 // Configuration
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000';
@@ -15,12 +18,36 @@ const API_KEY = process.env.NOCAP_API_KEY; // Get from /api/keys
 
 async function main() {
   console.log('🚀 No-Cap Facts API Demo\n');
-
-  // Initialize SDK
-  const sdk = new NoCapSDK({
-    apiKey: API_KEY,
-    baseUrl: API_BASE_URL
-  });
+  
+  // Check which mode to run
+  const args = process.argv.slice(2);
+  const mode = args.find(arg => arg.startsWith('--mode='))?.split('=')[1] || 'decentralized';
+  
+  let sdk;
+  
+  if (mode === 'centralized') {
+    console.log('🏢 Running in CENTRALIZED mode (requires API key)');
+    if (!API_KEY) {
+      console.error('❌ API_KEY required for centralized mode');
+      console.log('💡 Get your API key at /api/keys or run in decentralized mode');
+      process.exit(1);
+    }
+    
+    sdk = new NoCapSDK({
+      apiKey: API_KEY,
+      baseUrl: API_BASE_URL
+    });
+    
+  } else {
+    console.log('🌐 Running in DECENTRALIZED mode (no API key needed!)');
+    console.log('   Connecting directly to Walrus network...\n');
+    
+    sdk = new WalrusDirectSDK({
+      aggregatorUrl: process.env.WALRUS_AGGREGATOR || 'https://aggregator.walrus.host',
+      publisherUrl: process.env.WALRUS_PUBLISHER || 'https://publisher.walrus.host',
+      cacheTimeout: 5 * 60 * 1000 // 5 minutes
+    });
+  }
 
   try {
     // 1. Health Check

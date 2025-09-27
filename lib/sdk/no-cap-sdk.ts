@@ -14,6 +14,12 @@ export interface NoCapSDKConfig {
   baseUrl?: string;
   timeout?: number;
   retries?: number;
+  // Decentralized mode - connect directly to Walrus
+  walrus?: {
+    aggregatorUrl: string;
+    publisherUrl: string;
+    mode: 'direct'; // Direct Walrus access
+  };
 }
 
 export interface DeveloperInsights {
