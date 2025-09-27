@@ -5,7 +5,7 @@ import { MiniKit, VerifyCommandInput, VerificationLevel, ISuccessResult } from '
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from "sonner"
 import { CheckCircle, AlertCircle, Loader2, Shield, Link as LinkIcon } from 'lucide-react'
 import { useWorldChainContracts } from '@/hooks/use-world-chain-contracts'
 
@@ -32,16 +32,11 @@ export function EnhancedWorldIDVerification({
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'proof-generated' | 'on-chain-verified' | 'error'>('idle')
   const [verificationResult, setVerificationResult] = useState<ISuccessResult | null>(null)
   const [onChainTxHash, setOnChainTxHash] = useState<string>('')
-  const { toast } = useToast()
   const { verifyWorldID, isLoading: isContractLoading } = useWorldChainContracts()
 
   const handleVerify = useCallback(async () => {
     if (!MiniKit.isInstalled()) {
-      toast({
-        title: 'World App Required',
-        description: 'Please open this app in World App to verify your identity.',
-        variant: 'destructive',
-      })
+      toast.error('Please open this app in World App to verify your identity.')
       setVerificationStatus('error')
       return
     }
@@ -51,10 +46,7 @@ export function EnhancedWorldIDVerification({
 
     try {
       // Step 1: Generate World ID proof
-      toast({
-        title: 'Generating Proof',
-        description: 'Creating your World ID proof...',
-      })
+      toast('Creating your World ID proof...')
 
       const verifyPayload: VerifyCommandInput = {
         action,
@@ -66,11 +58,7 @@ export function EnhancedWorldIDVerification({
 
       if (finalPayload.status === 'error') {
         const errorMsg = finalPayload.error_code || 'World ID verification failed'
-        toast({
-          title: 'Verification Failed',
-          description: errorMsg,
-          variant: 'destructive',
-        })
+        toast.error(errorMsg)
         setVerificationStatus('error')
         onError?.(finalPayload)
         return
@@ -81,18 +69,12 @@ export function EnhancedWorldIDVerification({
       setVerificationResult(result)
       setVerificationStatus('proof-generated')
 
-      toast({
-        title: 'World ID Proof Generated',
-        description: 'Your humanity has been verified!',
-      })
+      toast.success('Your humanity has been verified!')
 
       // Step 2: Submit to blockchain (if enabled and wallet connected)
       if (enableOnChainVerification && walletAddress) {
         try {
-          toast({
-            title: 'Submitting to Blockchain',
-            description: 'Recording your verification on World Chain...',
-          })
+          toast('Recording your verification on World Chain...')
 
           const txHash = await verifyWorldID(
             walletAddress,
@@ -104,20 +86,13 @@ export function EnhancedWorldIDVerification({
           setOnChainTxHash(txHash)
           setVerificationStatus('on-chain-verified')
           
-          toast({
-            title: 'On-Chain Verification Complete!',
-            description: 'Your World ID is now verified on World Chain.',
-          })
+          toast.success('Your World ID is now verified on World Chain.')
 
           onSuccess?.(result, txHash)
         } catch (contractError) {
           // Proof generated but on-chain verification failed
           console.error('On-chain verification failed:', contractError)
-          toast({
-            title: 'On-Chain Verification Failed',
-            description: 'World ID proof generated but blockchain submission failed.',
-            variant: 'destructive',
-          })
+          toast.error('World ID proof generated but blockchain submission failed.')
           onSuccess?.(result) // Still call success with proof
         }
       } else {
@@ -127,11 +102,7 @@ export function EnhancedWorldIDVerification({
 
     } catch (error: any) {
       console.error('World ID verification error:', error)
-      toast({
-        title: 'Verification Error',
-        description: error.message || 'An unexpected error occurred during verification.',
-        variant: 'destructive',
-      })
+      toast.error(error.message || 'An unexpected error occurred during verification.')
       setVerificationStatus('error')
       onError?.(error)
     } finally {

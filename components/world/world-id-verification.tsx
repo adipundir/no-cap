@@ -5,7 +5,7 @@ import { MiniKit, VerifyCommandInput, VerificationLevel, ISuccessResult } from '
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from "sonner"
 import { CheckCircle, AlertCircle, Loader2, Shield } from 'lucide-react'
 import { useWorldChainContracts } from '@/hooks/use-world-chain-contracts'
 
@@ -26,15 +26,10 @@ export function WorldIDVerification({
 }: WorldIDVerificationProps) {
   const [isVerifying, setIsVerifying] = useState(false)
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'success' | 'error'>('idle')
-  const { toast } = useToast()
 
   const handleVerify = useCallback(async () => {
     if (!MiniKit.isInstalled()) {
-      toast({
-        title: 'World App Required',
-        description: 'Please open this app in World App to verify your identity.',
-        variant: 'destructive',
-      })
+      toast.error('Please open this app in World App to verify your identity.')
       setVerificationStatus('error')
       return
     }
@@ -52,11 +47,7 @@ export function WorldIDVerification({
       const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload)
 
       if (finalPayload.status === 'error') {
-        toast({
-          title: 'Verification Failed',
-          description: finalPayload.error_code || 'World ID verification failed. Please try again.',
-          variant: 'destructive',
-        })
+        toast.error(finalPayload.error_code || 'World ID verification failed. Please try again.')
         setVerificationStatus('error')
         onError?.(finalPayload)
         return
@@ -71,18 +62,11 @@ export function WorldIDVerification({
       })
 
       setVerificationStatus('success')
-      toast({
-        title: 'Identity Verified',
-        description: 'Your World ID has been successfully verified and proof generated!',
-      })
+      toast.success('Your World ID has been successfully verified and proof generated!')
       onSuccess?.(finalPayload as ISuccessResult)
     } catch (error) {
       console.error('Verification error:', error)
-      toast({
-        title: 'Verification Error',
-        description: 'An unexpected error occurred during verification.',
-        variant: 'destructive',
-      })
+      toast.error('An unexpected error occurred during verification.')
       setVerificationStatus('error')
       onError?.(error)
     } finally {

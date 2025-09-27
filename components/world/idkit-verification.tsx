@@ -5,7 +5,7 @@ import { IDKitWidget, VerificationLevel, ISuccessResult } from '@worldcoin/idkit
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from "sonner"
 import { useUnifiedContracts } from '@/hooks/use-unified-contracts'
 import { 
   Shield, 
@@ -34,7 +34,6 @@ export function IDKitVerification({
   const [isVerifying, setIsVerifying] = useState(false)
   const [isVerified, setIsVerified] = useState(false)
   const [userProfile, setUserProfile] = useState<any>(null)
-  const { toast } = useToast()
   const { verifyAndRegister, getUserProfile, isUserVerified, isLoading } = useUnifiedContracts()
 
   // Check verification status on component mount
@@ -56,11 +55,7 @@ export function IDKitVerification({
     setIsVerifying(true)
     
     try {
-      toast({
-        // variant: default (info),
-        title: 'Registering on World Chain',
-        description: 'Please approve the transaction to complete your verification.',
-      })
+      toast('Please approve the transaction to complete your verification.')
 
       // Submit proof to our unified contract
       const txHash = await verifyAndRegister(
@@ -74,20 +69,12 @@ export function IDKitVerification({
       setUserProfile(profile)
       setIsVerified(true)
 
-      toast({
-        // variant: default (success),
-        title: 'Verification Complete!',
-        description: `You're now verified as a unique human on World Chain. TX: ${txHash.slice(0, 10)}...`,
-      })
+      toast.success(`You're now verified as a unique human on World Chain. TX: ${txHash.slice(0, 10)}...`)
 
       onVerificationSuccess?.(profile)
     } catch (error: any) {
       console.error('Verification error:', error)
-      toast({
-        variant: 'destructive',
-        title: 'Verification Failed',
-        description: error.message || 'Failed to complete verification. Please try again.',
-      })
+      toast.error(error.message || 'Failed to complete verification. Please try again.')
       onVerificationError?.(error)
     } finally {
       setIsVerifying(false)
@@ -96,11 +83,7 @@ export function IDKitVerification({
 
   const handleVerificationError = useCallback((error: any) => {
     console.error('IDKit verification error:', error)
-    toast({
-      variant: 'destructive',
-      title: 'World ID Verification Failed',
-      description: 'Please try again or contact support if the issue persists.',
-    })
+    toast.error('Please try again or contact support if the issue persists.')
     onVerificationError?.(error)
   }, [toast, onVerificationError])
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useUnifiedContracts } from "@/hooks/use-unified-contracts";
+import { toast } from "sonner"
 
 export default function SubmitPage() {
   const [title, setTitle] = useState("");
@@ -27,7 +28,7 @@ export default function SubmitPage() {
 
     // Check if user is verified
     if (!isVerified) {
-      alert('Please verify your humanity with World ID first. Connect your World App wallet and complete verification.');
+      toast.error('Please verify your humanity with World ID first. Connect your World App wallet and complete verification.');
       return;
     }
 

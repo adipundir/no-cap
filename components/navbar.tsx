@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { MiniKit, WalletAuthInput, VerifyCommandInput, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from "sonner"
 import { useUnifiedContracts } from '@/hooks/use-unified-contracts'
 import { 
   DropdownMenu,
@@ -41,7 +41,6 @@ export function Navbar() {
   const [isVerified, setIsVerified] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
   const [isLoadingBalances, setIsLoadingBalances] = useState(false)
-  const { toast } = useToast()
   const { verifyAndRegister, checkVerificationStatus, setWalletConnection } = useUnifiedContracts()
 
   const fetchBalances = useCallback(async (address: string) => {
@@ -129,10 +128,7 @@ export function Navbar() {
       
       if (!contractsDeployed) {
         console.log('Contracts not deployed yet, skipping auto-verification')
-        toast({
-          title: 'Welcome!',
-          description: 'Wallet connected successfully. Contract deployment pending for full verification.',
-        })
+        toast('Wallet connected successfully. Contract deployment pending for full verification.')
         return
       }
       
@@ -140,20 +136,14 @@ export function Navbar() {
       
       if (verified) {
         setIsVerified(true)
-        toast({
-          title: 'Already Verified',
-          description: 'Your World ID is already verified on-chain.',
-        })
+        toast.success('Your World ID is already verified on-chain.')
         return
       }
 
       // User not verified - trigger World ID verification automatically
       setIsVerifying(true)
       
-      toast({
-        title: 'Verifying Humanity',
-        description: 'Please complete World ID verification to prove your humanity...',
-      })
+      toast('Please complete World ID verification to prove your humanity...')
 
       const verifyPayload: VerifyCommandInput = {
         action: process.env.NEXT_PUBLIC_ACTION_ID || 'humanhood',
@@ -164,21 +154,14 @@ export function Navbar() {
       const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload)
 
       if (finalPayload.status === 'error') {
-        toast({
-          title: 'Verification Failed',
-          description: finalPayload.error_code || 'World ID verification failed. You can try again later.',
-          variant: 'destructive',
-        })
+        toast.error(finalPayload.error_code || 'World ID verification failed. You can try again later.')
         return
       }
 
       // World ID verification successful - now submit to blockchain
       const result = finalPayload as ISuccessResult
       
-      toast({
-        title: 'Submitting to Blockchain',
-        description: 'Recording your verification on World Chain...',
-      })
+      toast('Recording your verification on World Chain...')
 
       const txHash = await verifyAndRegister(
         result.merkle_root,
@@ -188,26 +171,16 @@ export function Navbar() {
 
       setIsVerified(true)
       
-      toast({
-        title: 'Humanity Verified!',
-        description: `You're now verified on World Chain. TX: ${txHash.slice(0, 10)}...`,
-      })
+      toast.success(`You're now verified on World Chain. TX: ${txHash.slice(0, 10)}...`)
 
     } catch (error: any) {
       console.error('Auto-verification error:', error)
       
       // Handle specific contract errors
       if (error.message?.includes('0x0000') || error.message?.includes('not deployed')) {
-        toast({
-          title: 'Contract Pending',
-          description: 'Smart contracts are being deployed. Verification will be available soon.',
-        })
+        toast('Smart contracts are being deployed. Verification will be available soon.')
       } else if (!error.message?.includes('cancelled') && !error.message?.includes('denied')) {
-        toast({
-          title: 'Verification Error',
-          description: 'Auto-verification failed. You can verify manually later.',
-          variant: 'destructive',
-        })
+        toast.error('Auto-verification failed. You can verify manually later.')
       }
     } finally {
       setIsVerifying(false)
@@ -222,11 +195,7 @@ export function Navbar() {
 
   const handleWalletConnect = useCallback(async () => {
     if (!MiniKit.isInstalled()) {
-        toast({
-          title: 'World App Required',
-          description: 'Please open this app in World App to connect your wallet.',
-          variant: 'destructive',
-        })
+        toast.error('Please open this app in World App to connect your wallet.')
       return
     }
 
@@ -246,11 +215,7 @@ export function Navbar() {
       const { finalPayload } = await MiniKit.commandsAsync.walletAuth(walletAuthPayload)
 
       if (finalPayload.status === 'error') {
-        toast({
-          title: 'Connection Failed',
-          description: finalPayload.error_code || 'Failed to connect wallet. Please try again.',
-          variant: 'destructive',
-        })
+        toast.error(finalPayload.error_code || 'Failed to connect wallet. Please try again.')
         return
       }
 
@@ -259,10 +224,7 @@ export function Navbar() {
       setIsWalletConnected(true)
       await fetchBalances(address)
       
-      toast({
-        title: 'Wallet Connected',
-        description: `Successfully connected ${address.slice(0, 6)}...${address.slice(-4)}`,
-      })
+      toast.success(`Successfully connected ${address.slice(0, 6)}...${address.slice(-4)}`)
       
       console.log('World App wallet connected:', { address, signature, message })
       
@@ -271,11 +233,7 @@ export function Navbar() {
       
     } catch (error) {
       console.error('Wallet auth error:', error)
-      toast({
-        title: 'Connection Error',
-        description: 'An unexpected error occurred while connecting your wallet.',
-        variant: 'destructive',
-      })
+      toast.error('An unexpected error occurred while connecting your wallet.')
     } finally {
       setIsConnecting(false)
     }
@@ -292,10 +250,7 @@ export function Navbar() {
     setIsVerifying(false)
     setIsLoadingBalances(false)
     
-    toast({
-      title: 'Wallet Disconnected',
-      description: 'Your wallet has been disconnected successfully.',
-    })
+    toast('Your wallet has been disconnected successfully.')
   }, [toast])
 
 

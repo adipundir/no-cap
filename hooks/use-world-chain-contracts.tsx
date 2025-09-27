@@ -2,13 +2,12 @@
 
 import { useState, useCallback } from 'react'
 import { WorldChainContractService } from '@/lib/world-chain-contracts'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from "sonner"
 
 export function useWorldChainContracts() {
   const [isLoading, setIsLoading] = useState(false)
   const [isVerified, setIsVerified] = useState(false)
   const [ethBalance, setEthBalance] = useState('0.0000')
-  const { toast } = useToast()
 
   /**
    * Verify World ID proof on-chain
@@ -21,11 +20,7 @@ export function useWorldChainContracts() {
   ) => {
     setIsLoading(true)
     try {
-      toast({
-        // variant: default (info),
-        title: 'Verifying World ID',
-        description: 'Submitting your World ID proof to the blockchain...',
-      })
+      toast('Submitting your World ID proof to the blockchain...')
 
       const txHash = await WorldChainContractService.verifyWorldID(
         walletAddress,
@@ -35,20 +30,12 @@ export function useWorldChainContracts() {
       )
 
       setIsVerified(true)
-      toast({
-        // variant: default (success),
-        title: 'World ID Verified!',
-        description: `Transaction confirmed: ${txHash.slice(0, 10)}...`,
-      })
+      toast.success(`Transaction confirmed: ${txHash.slice(0, 10)}...`)
 
       return txHash
     } catch (error: any) {
       console.error('World ID verification failed:', error)
-      toast({
-        variant: 'destructive',
-        title: 'Verification Failed',
-        description: error.message || 'Failed to verify World ID on-chain',
-      })
+      toast.error(error.message || 'Failed to verify World ID on-chain')
       throw error
     } finally {
       setIsLoading(false)
@@ -64,28 +51,16 @@ export function useWorldChainContracts() {
   ) => {
     setIsLoading(true)
     try {
-      toast({
-        // variant: default (info),
-        title: 'Submitting Fact',
-        description: 'Creating your fact claim on World Chain...',
-      })
+      toast('Creating your fact claim on World Chain...')
 
       const txHash = await WorldChainContractService.submitFact(title, description)
 
-      toast({
-        // variant: default (success),
-        title: 'Fact Submitted!',
-        description: `Your fact claim is now live. TX: ${txHash.slice(0, 10)}...`,
-      })
+      toast.success(`Your fact claim is now live. TX: ${txHash.slice(0, 10)}...`)
 
       return txHash
     } catch (error: any) {
       console.error('Fact submission failed:', error)
-      toast({
-        variant: 'destructive',
-        title: 'Submission Failed',
-        description: error.message || 'Failed to submit fact claim',
-      })
+      toast.error(error.message || 'Failed to submit fact claim')
       throw error
     } finally {
       setIsLoading(false)
@@ -102,11 +77,7 @@ export function useWorldChainContracts() {
   ) => {
     setIsLoading(true)
     try {
-      toast({
-        // variant: default (info),
-        title: 'Submitting Fact with Stake',
-        description: `Staking ${stakeAmount} ETH and creating your fact claim...`,
-      })
+      toast(`Staking ${stakeAmount} ETH and creating your fact claim...`)
 
       const txHash = await WorldChainContractService.submitFactWithStake(
         title,
@@ -114,20 +85,12 @@ export function useWorldChainContracts() {
         stakeAmount
       )
 
-      toast({
-        // variant: default (success),
-        title: 'Fact Submitted with Stake!',
-        description: `Your fact claim is live with ${stakeAmount} ETH stake. TX: ${txHash.slice(0, 10)}...`,
-      })
+      toast.success(`Your fact claim is live with ${stakeAmount} ETH stake. TX: ${txHash.slice(0, 10)}...`)
 
       return txHash
     } catch (error: any) {
       console.error('Fact submission with stake failed:', error)
-      toast({
-        variant: 'destructive',
-        title: 'Submission Failed',
-        description: error.message || 'Failed to submit fact claim with stake',
-      })
+      toast.error(error.message || 'Failed to submit fact claim with stake')
       throw error
     } finally {
       setIsLoading(false)
@@ -141,28 +104,16 @@ export function useWorldChainContracts() {
     setIsLoading(true)
     try {
       const stakeText = stakeAmount ? ` with ${stakeAmount} ETH stake` : ''
-      toast({
-        // variant: default (info),
-        title: 'Submitting Vote',
-        description: `Voting ${vote ? 'TRUE' : 'FALSE'} on fact claim${stakeText}...`,
-      })
+      toast(`Voting ${vote ? 'TRUE' : 'FALSE'} on fact claim${stakeText}...`)
 
       const txHash = await WorldChainContractService.voteFact(factId, vote, stakeAmount)
 
-      toast({
-        // variant: default (success),
-        title: 'Vote Submitted!',
-        description: `Your vote has been recorded${stakeText}. TX: ${txHash.slice(0, 10)}...`,
-      })
+      toast.success(`Your vote has been recorded${stakeText}. TX: ${txHash.slice(0, 10)}...`)
 
       return txHash
     } catch (error: any) {
       console.error('Voting failed:', error)
-      toast({
-        variant: 'destructive',
-        title: 'Vote Failed',
-        description: error.message || 'Failed to submit vote',
-      })
+      toast.error(error.message || 'Failed to submit vote')
       throw error
     } finally {
       setIsLoading(false)
