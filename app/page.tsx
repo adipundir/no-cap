@@ -6,9 +6,9 @@ export default function Home() {
   return (
     <div className="page-bg min-h-screen flex flex-col select-none" style={{ userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
       {/* HERO SECTION */}
-      <main className="flex flex-col items-center justify-center px-4 py-6 md:py-12">
-        <div className="w-full max-w-sm md:max-w-4xl text-center">
-          <div className="relative h-[160px] md:h-[240px] mb-3">
+      <main className="flex flex-col items-center justify-center px-4 py-6 md:py-12 min-h-[90vh] md:min-h-0">
+        <div className="w-full max-w-sm md:max-w-4xl text-center flex flex-col items-center">
+          <div className="relative h-[150px] md:h-[260px] mb-1 md:mb-20 w-full">
             <TextPressure
               text="NOCAP"
               flex={true}
@@ -23,8 +23,8 @@ export default function Home() {
             />
           </div>
           
-          <div className="space-y-3 md:space-y-5">
-            <p className="text-sm md:text-lg text-muted-foreground max-w-2xl mx-auto px-2 md:px-0">
+          <div className="space-y-2 md:space-y-4">
+            <p className="text-sm md:text-lg text-muted-foreground max-w-2xl mx-auto px-2 md:px-0 md:leading-relaxed">
               Community-driven fact verification. Anonymous reviews. On-chain transparency.
             </p>
             
@@ -33,11 +33,11 @@ export default function Home() {
             </Button>
 
             {/* CurvedLoop Animation */}
-            <div className="">
+            <div className="mt-2 md:mt-8">
               <CurvedLoop 
                 marqueeText="Verify ✦ Facts ✦ Earn ✦ Rewards ✦ Stay ✦ Anonymous ✦"
                 speed={2}
-                curveAmount={300}
+                curveAmount={260}
                 direction="right"
                 interactive={true}
                 className="text-muted-foreground"

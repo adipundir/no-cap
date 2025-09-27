@@ -1,6 +1,6 @@
 // Walrus Storage Service for NOCAP
-// Using real Walrus SDK from @mysten/walrus
-import { WalrusClient, TESTNET_WALRUS_PACKAGE_CONFIG } from '@mysten/walrus'
+// Using HTTP API - No Sui wallet required!
+import { WalrusHttpService, getWalrusHttpService } from './walrus-http'
 
 // Walrus configuration for NOCAP
 const WALRUS_CONFIG = {
@@ -84,16 +84,16 @@ export interface WalrusComment {
  * Handles all interactions with Walrus for content storage
  */
 export class NOCAPWalrusService {
-  private static walrusClient: WalrusClient
+  private static walrusHttp: WalrusHttpService
 
   /**
    * Initialize Walrus service
    */
   static initialize() {
-    if (!this.walrusClient) {
-      this.walrusClient = new WalrusClient(TESTNET_WALRUS_PACKAGE_CONFIG)
+    if (!this.walrusHttp) {
+      this.walrusHttp = getWalrusHttpService()
     }
-    return this.walrusClient
+    return this.walrusHttp
   }
 
   /**
@@ -113,27 +113,18 @@ export class NOCAPWalrusService {
         throw new Error(`Content too large: ${contentSize} bytes (max: ${WALRUS_CONFIG.maxBlobSize})`)
       }
       
-      // Store on Walrus using real SDK
-      const jsonData = JSON.stringify(factContent, null, 2)
-      const blob = new Uint8Array(Buffer.from(jsonData, 'utf-8'))
-      
-      const result = await walrus.writeBlob(blob)
-      
-      if (!result.blobId) {
-        throw new Error('Failed to get blob ID from Walrus')
-      }
-      
-      const blobId = result.blobId
+      // Store on Walrus using HTTP API - No Sui wallet needed!
+      const result = await walrus.storeJSON(factContent, 5) // 5 epochs
       
       console.log('Fact stored on Walrus:', {
-        blobId: blobId,
+        blobId: result.blobId,
         factId: factContent.factId,
         title: factContent.title,
-        size: contentSize,
-        certificate: result.certificate
+        size: result.size,
+        cost: result.cost
       })
       
-      return blobId
+      return result.blobId
     } catch (error) {
       console.error('Error storing fact on Walrus:', error)
       throw new Error(`Walrus storage failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -147,14 +138,8 @@ export class NOCAPWalrusService {
     try {
       const walrus = this.initialize()
       
-      const result = await walrus.getBlob(blobId)
-      if (!result) {
-        throw new Error('Blob not found on Walrus')
-      }
-      
-      // Convert Uint8Array to string
-      const text = new TextDecoder().decode(result)
-      const factContent: WalrusFactContent = JSON.parse(text)
+      // Retrieve using HTTP API - No wallet needed!
+      const factContent = await walrus.retrieveJSON<WalrusFactContent>(blobId)
       
       // Verify content integrity
       const expectedChecksum = this.generateChecksum({
