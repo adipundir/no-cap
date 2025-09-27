@@ -257,6 +257,40 @@ export function Navbar() {
               )}
             </div>
 
+            {/* Mobile Wallet (outside menu) */}
+            <div className="md:hidden">
+              {isWalletConnected ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={handleDisconnect}
+                >
+                  <Wallet className="h-4 w-4" />
+                  <span>{formatAddress(walletAddress)}</span>
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleWalletConnect}
+                  disabled={isConnecting}
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  {isConnecting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Connecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="h-4 w-4" />
+                      <span>Connect</span>
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+
             {/* Mobile Menu */}
             <div className="md:hidden">
               <Sheet>
