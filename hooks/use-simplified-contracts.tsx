@@ -108,7 +108,7 @@ export function useSimplifiedContracts() {
    */
   const voteOnFact = useCallback(async (
     factId: string,
-    vote: boolean, // true = CAP, false = NO CAP
+    vote: boolean, // true = NO CAP (true), false = CAP (false)
     stakeAmount?: string
   ) => {
     if (!MiniKit.isInstalled()) {
@@ -150,7 +150,7 @@ export function useSimplifiedContracts() {
       }
 
       // 3. Submit vote to contract
-      const voteText = vote ? 'CAP' : 'NO CAP'
+      const voteText = vote ? 'NO CAP' : 'CAP'
       const stakeText = stakeAmount ? ` with ${stakeAmount} ETH stake` : ''
       
       toast(`Casting ${voteText} vote${stakeText}...`)

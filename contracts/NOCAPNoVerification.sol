@@ -53,14 +53,14 @@ contract NOCAPNoVerification {
         uint256 createdAt;
         uint256 deadline;           // When voting ends (createdAt + 10 minutes)
         bool resolved;
-        bool outcome;               // true = CAP, false = NO CAP
+        bool outcome;               // true = NO CAP (true), false = CAP (false)
         uint256 totalRewards;       // Total rewards distributed
     }
 
     /// @notice Vote structure
     struct Vote {
         address voter;
-        bool vote;                  // true = CAP, false = NO CAP
+        bool vote;                  // true = NO CAP (true), false = CAP (false)
         uint256 stake;              // ETH staked with this vote
         uint256 timestamp;
     }
@@ -126,7 +126,7 @@ contract NOCAPNoVerification {
         if (msg.value > 0) {
             factVotes[factId].push(Vote({
                 voter: msg.sender,
-                vote: true,  // Creator automatically votes CAP
+                vote: true,  // Creator automatically votes NO CAP (believes fact is true)
                 stake: msg.value,
                 timestamp: block.timestamp
             }));
@@ -138,7 +138,7 @@ contract NOCAPNoVerification {
 
     /// @notice Vote on a fact with optional stake (NO VERIFICATION REQUIRED)
     /// @param factId The ID of the fact to vote on
-    /// @param vote true for CAP, false for NO CAP
+    /// @param vote true for NO CAP (true), false for CAP (false)
     function voteOnFact(uint256 factId, bool vote) external payable {
         // Check if fact exists
         if (factId >= factCount) revert FactNotFound();
@@ -224,7 +224,7 @@ contract NOCAPNoVerification {
 
     /// @notice Internal function to distribute rewards
     /// @param factId The ID of the fact
-    /// @param outcome The resolved outcome (true = CAP won, false = NO CAP won)
+    /// @param outcome The resolved outcome (true = NO CAP won, false = CAP won)
     /// @param totalPool Total ETH to distribute
     function _distributeRewards(uint256 factId, bool outcome, uint256 totalPool) internal {
         Fact storage fact = facts[factId];
