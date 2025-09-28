@@ -1,398 +1,687 @@
-# NOCAP Walrus SDK
+# Walrus Data SDK
 
-The official SDK for accessing verified facts from the NOCAP database, built on top of Walrus decentralized storage protocol.
+A comprehensive TypeScript SDK for storing, querying, and indexing structured data on the [Walrus](https://walrus.space) decentralized storage network with O(1) lookup capabilities.
 
-## Overview
+## 🚀 Features
 
-NOCAP is a decentralized fact-checking platform that stores verified information on the Walrus network. This SDK provides a simple, type-safe API for developers and AI agents to access this verified data.
+- **🌐 Decentralized Storage** - Built on top of the Walrus network for censorship-resistant data storage
+- **⚡ O(1) Queries** - Efficient indexed lookups with intelligent caching
+- **🏷️ Schema Support** - Auto-generate and validate schemas from your data
+- **📊 Advanced Querying** - Complex filters, full-text search, and range queries
+- **🔧 Multiple Interfaces** - Generic client, KV store, and document store patterns
+- **📦 Bulk Operations** - Efficiently handle large datasets
+- **🔄 Real-time Events** - Subscribe to data changes and updates
+- **💾 Smart Caching** - Automatic caching with configurable TTL and strategies
+- **🔒 Type Safety** - Full TypeScript support with comprehensive types
+- **📈 Performance Optimized** - Built-in metrics, query optimization, and batch processing
 
-## Features
-
-- 🔍 **Advanced Search** - Search facts by keywords, tags, authors, status, and date ranges
-- ⚡ **High Performance** - O(1) indexed lookups with efficient caching
-- 🏷️ **Rich Metadata** - Access tags, sources, author information, and verification status
-- 📊 **Bulk Operations** - Retrieve multiple facts in a single request
-- 🔒 **Type Safety** - Full TypeScript support with comprehensive type definitions
-- 🌐 **Decentralized** - Built on Walrus for censorship-resistant data access
-- 📈 **Analytics** - Built-in metrics and monitoring capabilities
-
-## Installation
+## 📦 Installation
 
 ```bash
-npm install nocap-sdk
+npm install walrus-data-sdk
 # or
-yarn add nocap-sdk
+yarn add walrus-data-sdk
 # or
-pnpm add nocap-sdk
+pnpm add walrus-data-sdk
 ```
 
-## Quick Start
+## 🎯 Quick Start
+
+### Basic Usage
 
 ```typescript
-import { createClient } from 'nocap-sdk';
+import { createClient } from 'walrus-data-sdk';
 
 // Create a client
+const client = createClient();
+
+// Store structured data
+const result = await client.store({
+  name: 'John Doe',
+  email: 'john@example.com',
+  age: 30,
+  skills: ['JavaScript', 'TypeScript', 'React']
+}, {
+  schema: 'user-profile',
+  tags: ['user', 'profile'],
+  categories: ['personal-data']
+});
+
+console.log(`Stored with ID: ${result.dataId}`);
+
+// Retrieve data
+const retrieved = await client.retrieve(result.dataId);
+console.log('Retrieved:', retrieved.item.data);
+
+// Query data
+const users = await client.query({
+  schema: ['user-profile'],
+  fieldQueries: [
+    { field: 'age', value: 25, operator: 'ge' } // Age >= 25
+  ],
+  tags: ['user'],
+  limit: 10
+});
+
+console.log(`Found ${users.totalCount} users`);
+```
+
+### Key-Value Store
+
+```typescript
+import { KVStore } from 'walrus-data-sdk';
+
+const kv = new KVStore();
+
+// Set values
+await kv.set('user:123', { name: 'Alice', email: 'alice@example.com' });
+await kv.set('config:theme', 'dark');
+
+// Get values
+const user = await kv.get('user:123');
+const theme = await kv.get('config:theme');
+
+// List keys
+const userKeys = await kv.keys('user:*');
+```
+
+### Document Store
+
+```typescript
+import { DocumentStore } from 'walrus-data-sdk';
+
+const users = new DocumentStore('users');
+
+// Insert documents
+const userId = await users.insert({
+  name: 'Bob Wilson',
+  email: 'bob@example.com',
+  role: 'admin'
+});
+
+// Query documents
+const admins = await users.find({
+  fieldQueries: [{ field: 'role', value: 'admin', operator: 'eq' }]
+});
+
+// Count documents
+const totalUsers = await users.count();
+```
+
+## 🏗️ Architecture
+
+The SDK provides multiple layers of abstraction:
+
+```
+┌─────────────────────────────────────────────┐
+│                Applications                 │
+├─────────────────────────────────────────────┤
+│    KV Store    │ Document Store │  Custom   │
+├─────────────────────────────────────────────┤
+│             Walrus Data Client              │
+├─────────────────────────────────────────────┤
+│    Query Engine    │    Index Layer        │
+├─────────────────────────────────────────────┤
+│         Cache Layer (Optional)              │
+├─────────────────────────────────────────────┤
+│             Walrus SDK (@mysten)            │
+├─────────────────────────────────────────────┤
+│          Walrus Network (Testnet)           │
+└─────────────────────────────────────────────┘
+```
+
+## 🔧 Configuration
+
+### Client Options
+
+```typescript
+import { createClient } from 'walrus-data-sdk';
+
 const client = createClient({
-  apiUrl: 'https://nocap.app/api'  // Optional: defaults to official API
-});
-
-// Get all facts
-const facts = await client.getFacts({ limit: 10 });
-console.log(`Found ${facts.totalCount} total facts`);
-
-// Get a specific fact
-const fact = await client.getFact('fact-id-123');
-console.log(fact.title);
-
-// Search facts
-const results = await client.searchFacts({
-  keywords: ['climate', 'science'],
-  status: ['verified'],
-  limit: 5
+  publisherUrl: 'https://publisher.walrus-testnet.walrus.space',
+  aggregatorUrl: 'https://aggregator.walrus-testnet.walrus.space',
+  timeout: 30000,          // 30 second timeout
+  retries: 3,              // 3 retry attempts
+  retryDelay: 1000,        // 1 second between retries
+  maxBlobSize: 10485760,   // 10MB max blob size
+  defaultEpochs: 5,        // Default storage epochs
+  enableCaching: true,     // Enable client-side caching
+  cacheTimeout: 300000     // 5 minute cache TTL
 });
 ```
 
-## API Reference
-
-### Client Configuration
+### Optimized Clients
 
 ```typescript
-interface NOCAPClientOptions {
-  apiUrl?: string;        // API base URL (default: https://nocap.app/api)
-  timeout?: number;       // Request timeout in ms (default: 30000)
-  retries?: number;       // Number of retries (default: 3)
-  retryDelay?: number;    // Delay between retries in ms (default: 1000)
-  userAgent?: string;     // Custom user agent
-  apiKey?: string;        // API key for authenticated requests (future)
-}
+import { createOptimizedClient } from 'walrus-data-sdk';
+
+// High-throughput applications
+const throughputClient = createOptimizedClient('high-throughput');
+
+// Low-latency applications  
+const latencyClient = createOptimizedClient('low-latency');
+
+// Large data storage
+const largeDataClient = createOptimizedClient('large-data');
+
+// Real-time applications
+const realtimeClient = createOptimizedClient('real-time');
 ```
 
-### Core Methods
+## 📋 Core API Reference
 
-#### `getFacts(options?)`
-Retrieve all facts with optional pagination.
+### WalrusDataClient
 
+#### Store Data
 ```typescript
-const facts = await client.getFacts({
-  limit: 20,
-  offset: 0
+await client.store<T>(data: T, options?: {
+  schema?: string;           // Schema identifier
+  tags?: string[];          // Searchable tags
+  categories?: string[];    // Data categories
+  epochs?: number;          // Storage duration
+  metadata?: object;        // Additional metadata
+  enableIndexing?: boolean; // Enable automatic indexing
 });
 ```
 
-#### `getFact(factId)`
-Get a specific fact by ID with full details.
-
+#### Retrieve Data
 ```typescript
-const fact = await client.getFact('galactic-ocean-1');
-console.log(fact.fullContent);
-console.log(fact.sources);
-console.log(fact.tags);
+await client.retrieve<T>(
+  id: string,              // Data ID or Blob ID
+  isBlob?: boolean        // Whether ID is a blob ID
+);
 ```
 
-#### `searchFacts(query)`
-Advanced search with multiple filters.
+#### Query Data
+```typescript
+await client.query<T>({
+  schema?: string | string[];           // Schema filters
+  tags?: string[];                     // Tag filters
+  categories?: string[];               // Category filters
+  author?: string | string[];          // Author filters
+  contentType?: string | string[];     // Content type filters
+  
+  // Field-specific queries
+  fieldQueries?: Array<{
+    field: string;
+    value: any;
+    operator: 'eq' | 'ne' | 'lt' | 'le' | 'gt' | 'ge' | 
+              'in' | 'contains' | 'startsWith' | 'endsWith';
+  }>;
+  
+  // Date range filtering
+  dateRange?: {
+    from?: Date;
+    to?: Date;
+  };
+  
+  // Text search
+  fullTextSearch?: string;
+  
+  // Pagination and sorting
+  limit?: number;
+  offset?: number;
+  sortBy?: 'created' | 'updated' | 'size' | 'relevance';
+  sortOrder?: 'asc' | 'desc';
+  
+  // Performance options
+  includeData?: boolean;               // Include full data or just metadata
+  customFilters?: (item) => boolean;   // Custom filter function
+});
+```
+
+#### Bulk Operations
+```typescript
+await client.getBulk({
+  dataIds?: string[];      // List of data IDs
+  blobIds?: string[];      // List of blob IDs  
+  query?: SearchQuery;     // Query to determine IDs
+  includeData?: boolean;   // Include full data
+  includeMetadata?: boolean; // Include metadata
+});
+```
+
+## 🏷️ Schema Management
+
+### Auto-Generate Schemas
 
 ```typescript
-const results = await client.searchFacts({
-  keywords: ['AI', 'machine learning'],
-  tags: ['technology', 'verified'],
-  authors: ['anon-ai1'],
-  status: ['verified', 'review'],
+import { generateSchema, validateSchema } from 'walrus-data-sdk';
+
+const sampleData = [
+  { id: 1, name: 'John', email: 'john@example.com', age: 30 },
+  { id: 2, name: 'Jane', email: 'jane@example.com', age: 25 }
+];
+
+// Generate schema from sample data
+const schema = generateSchema(sampleData, 'user-profile');
+
+// Validate data against schema
+const isValid = validateSchema(newUserData, schema);
+```
+
+### Custom Schemas
+
+```typescript
+const customSchema = {
+  id: 'product-catalog',
+  version: '1.0.0',
+  name: 'Product Catalog Schema',
+  properties: {
+    id: { type: 'string', required: true, indexed: true },
+    name: { type: 'string', required: true, searchable: true },
+    price: { type: 'number', required: true, indexed: true },
+    category: { type: 'string', required: true, indexed: true },
+    inStock: { type: 'boolean', required: true, indexed: true }
+  },
+  indexes: [
+    { name: 'idx_category_price', type: 'btree', fields: ['category', 'price'] },
+    { name: 'idx_name_fulltext', type: 'fulltext', fields: ['name'] }
+  ]
+};
+```
+
+## 🔍 Advanced Querying
+
+### Complex Filters
+
+```typescript
+// Multi-field query with various operators
+const results = await client.query({
+  schema: ['product'],
+  fieldQueries: [
+    { field: 'category', value: 'Electronics', operator: 'eq' },
+    { field: 'price', value: 1000, operator: 'lt' },
+    { field: 'rating', value: 4.0, operator: 'ge' },
+    { field: 'name', value: 'iPhone', operator: 'contains' }
+  ],
+  tags: ['featured'],
   dateRange: {
     from: new Date('2024-01-01'),
     to: new Date()
   },
-  limit: 10,
-  offset: 0
+  sortBy: 'created',
+  sortOrder: 'desc',
+  limit: 20
 });
 ```
 
-### Convenience Methods
+### Full-Text Search
 
-#### `searchByKeywords(keywords, options?)`
 ```typescript
-const facts = await client.searchByKeywords(['climate', 'change'], { limit: 5 });
+const searchResults = await client.query({
+  schema: ['article', 'blog-post'],
+  fullTextSearch: 'machine learning artificial intelligence',
+  fieldQueries: [
+    { field: 'status', value: 'published', operator: 'eq' }
+  ],
+  sortBy: 'relevance',
+  limit: 10
+});
 ```
 
-#### `searchByTags(tags, options?)`
+### Custom Filters
+
 ```typescript
-const facts = await client.searchByTags(['space', 'verified'], { limit: 5 });
+const filtered = await client.query({
+  schema: ['user-profile'],
+  customFilters: (item) => {
+    const user = item.data;
+    return user.age >= 18 && user.skills?.length > 2;
+  }
+});
 ```
 
-#### `getFactsByAuthor(author, options?)`
+## 📊 Performance & Optimization
+
+### Query Optimization
+
 ```typescript
-const facts = await client.getFactsByAuthor('anon-scientist1', { limit: 10 });
+import { optimizeQuery } from 'walrus-data-sdk';
+
+const slowQuery = {
+  limit: 1000,
+  sortBy: 'relevance',
+  fieldQueries: [
+    { field: 'name', value: 'John', operator: 'contains' }
+  ]
+};
+
+// Automatically optimize query for better performance
+const fastQuery = optimizeQuery(slowQuery);
 ```
 
-#### `getFactsByStatus(status, options?)`
+### Indexing
+
 ```typescript
-const verified = await client.getFactsByStatus('verified');
-const underReview = await client.getFactsByStatus('review');
-const flagged = await client.getFactsByStatus('flagged');
+import { createIndex } from 'walrus-data-sdk';
+
+// Create efficient indexes
+const nameIndex = createIndex('idx_name', ['name'], { type: 'btree' });
+const emailIndex = createIndex('idx_email', ['email'], { type: 'hash', unique: true });
+const fullTextIndex = createIndex('idx_content', ['title', 'content'], { type: 'fulltext' });
 ```
 
-### Bulk Operations
-
-#### `getBulkFacts(query)`
-Retrieve multiple facts by IDs in a single request.
+### Caching
 
 ```typescript
-const bulkResponse = await client.getBulkFacts({
-  factIds: ['fact1', 'fact2', 'fact3'],
-  includeContent: true,
-  includeSources: true
+// Built-in caching with configurable options
+const client = createClient({
+  enableCaching: true,
+  cacheTimeout: 600000,  // 10 minutes
 });
 
-console.log(`Retrieved ${bulkResponse.totalReturned} facts`);
-console.log(`Errors: ${bulkResponse.errors.length}`);
+// Manual cache control
+const result = await client.retrieve(id); // First call - from Walrus
+const cached = await client.retrieve(id);  // Second call - from cache
 ```
 
-### Monitoring & Statistics
+## 🔄 Real-Time Features
 
-#### `healthCheck()`
-Check the health of the NOCAP system.
+### Event Subscriptions
 
 ```typescript
-const health = await client.healthCheck();
+// Subscribe to data changes
+const subscriptionId = client.subscribe((event) => {
+  console.log(`${event.type}: ${event.dataId}`);
+  
+  if (event.type === 'created') {
+    console.log('New data:', event.data);
+  }
+}, {
+  schemas: ['user-profile'],
+  eventTypes: ['created', 'updated'],
+  authors: ['admin']
+});
+
+// Unsubscribe when done
+client.unsubscribe(subscriptionId);
+```
+
+## 📈 Monitoring & Health
+
+### Health Checks
+
+```typescript
+import { healthCheck } from 'walrus-data-sdk';
+
+const health = await healthCheck();
 console.log(`Status: ${health.status}`);
 console.log(`Walrus available: ${health.walrusStatus.available}`);
-console.log(`Total facts: ${health.indexStatus.facts}`);
+console.log(`Cache hit rate: ${health.cacheStatus?.hitRate}%`);
 ```
 
-#### `getIndexStats()`
-Get comprehensive index statistics.
+### Statistics
 
 ```typescript
-const stats = await client.getIndexStats();
-console.log(`Total facts: ${stats.totalFacts}`);
-console.log(`Total keywords: ${stats.totalKeywords}`);
-console.log(`Total tags: ${stats.totalTags}`);
+import { getStats } from 'walrus-data-sdk';
+
+const stats = await getStats();
+console.log(`Total items: ${stats.totalItems}`);
+console.log(`Total size: ${stats.totalSize} bytes`);
+console.log(`Top schemas:`, Object.keys(stats.schemas));
 ```
 
-#### `getMetrics()`
-Get client-side metrics.
+### Client Metrics
 
 ```typescript
 const metrics = client.getMetrics();
-console.log(`Requests made: ${metrics.requestCount}`);
+console.log(`Requests: ${metrics.requestCount}`);
 console.log(`Avg response time: ${metrics.avgResponseTime}ms`);
 console.log(`Error rate: ${metrics.errorRate * 100}%`);
+console.log(`Cache hit rate: ${metrics.cacheHitRate * 100}%`);
 ```
 
-## Data Types
+## 🛡️ Error Handling
 
-### NOCAPFact
-Basic fact information for list views.
-
-```typescript
-interface NOCAPFact {
-  id: string;
-  title: string;
-  summary: string;
-  status: 'verified' | 'review' | 'flagged';
-  votes: number;
-  comments: number;
-  author: string;
-  updated: string;
-  walrusBlobId?: string;
-  contentHash?: string;
-  metadata?: {
-    created: Date;
-    lastModified: Date;
-    version: number;
-    contentType: string;
-    tags?: string[];
-  };
-}
-```
-
-### NOCAPFactDetails
-Detailed fact information with full content.
+### Error Types
 
 ```typescript
-interface NOCAPFactDetails extends NOCAPFact {
-  fullContent?: string;
-  sources?: string[] | NOCAPSource[];
-  tags: NOCAPTag[];
-  keywords: string[];
-  blobId: string;
-}
-```
-
-### NOCAPTag
-Structured tag information.
-
-```typescript
-interface NOCAPTag {
-  name: string;
-  category: 'topic' | 'region' | 'type' | 'methodology' | 'urgency';
-}
-```
-
-## Error Handling
-
-The SDK provides specific error types for different scenarios:
-
-```typescript
-import { 
-  NOCAPError,
-  NOCAPNetworkError,
-  NOCAPValidationError,
-  NOCAPNotFoundError,
-  NOCAPRateLimitError 
-} from 'nocap-sdk';
+import {
+  WalrusDataError,
+  WalrusNetworkError,
+  WalrusValidationError,
+  WalrusNotFoundError,
+  WalrusStorageError,
+  WalrusRateLimitError
+} from 'walrus-data-sdk';
 
 try {
-  const fact = await client.getFact('invalid-id');
+  const result = await client.store(data);
 } catch (error) {
-  if (error instanceof NOCAPNotFoundError) {
-    console.log('Fact not found');
-  } else if (error instanceof NOCAPValidationError) {
-    console.log('Invalid request:', error.message);
-  } else if (error instanceof NOCAPRateLimitError) {
-    console.log('Rate limit exceeded, retry after:', error.details.retryAfter);
-  } else {
-    console.log('Unknown error:', error);
+  if (error instanceof WalrusValidationError) {
+    console.log('Validation failed:', error.message);
+  } else if (error instanceof WalrusStorageError) {
+    console.log('Storage failed:', error.message);
+    // Retry logic here
+  } else if (error instanceof WalrusNetworkError) {
+    console.log('Network error:', error.message);
+    // Fallback strategy
   }
 }
 ```
 
-## Standalone Functions
-
-For simple use cases, you can use standalone functions without creating a client:
+### Retry Strategies
 
 ```typescript
-import { getFact, searchFacts, healthCheck } from 'nocap-sdk';
+import { retryWithBackoff } from 'walrus-data-sdk';
 
-// Quick fact lookup
-const fact = await getFact('fact-id');
+const result = await retryWithBackoff(
+  () => client.store(data),
+  3,    // max retries
+  1000, // base delay
+  10000 // max delay
+);
+```
 
-// Quick search
-const results = await searchFacts({
-  keywords: ['space'],
-  limit: 5
+## 🌟 Use Cases
+
+### Content Management
+
+```typescript
+const articles = new DocumentStore('articles');
+
+// Create article
+await articles.insert({
+  title: 'Getting Started with Walrus',
+  content: 'Walrus is a decentralized storage network...',
+  author: 'tech-writer',
+  status: 'published',
+  tags: ['tutorial', 'walrus', 'storage']
 });
 
-// Quick health check
-const health = await healthCheck();
+// Find recent articles
+const recent = await articles.find({
+  fieldQueries: [{ field: 'status', value: 'published', operator: 'eq' }],
+  dateRange: { from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+  sortBy: 'created',
+  limit: 10
+});
 ```
 
-## Use Cases
-
-### 1. Fact-Checking Application
+### IoT Data Collection
 
 ```typescript
-async function checkClaim(claim: string) {
-  const client = createClient();
-  
-  // Extract keywords from claim
-  const keywords = extractKeywords(claim);
-  
-  // Search for related verified facts
-  const results = await client.searchFacts({
-    keywords,
-    status: ['verified'],
-    limit: 10
-  });
-  
-  return results.facts.map(fact => ({
-    title: fact.title,
-    summary: fact.summary,
-    relevanceScore: calculateRelevance(claim, fact),
-    sources: fact.sources
-  }));
-}
+// Store sensor readings
+const readings = await Promise.all(
+  sensorData.map(reading => client.store(reading, {
+    schema: 'sensor-reading',
+    tags: ['iot', 'sensor', reading.sensorId],
+    categories: ['telemetry']
+  }))
+);
+
+// Query recent data
+const recentReadings = await client.query({
+  schema: ['sensor-reading'],
+  fieldQueries: [{ field: 'sensorId', value: 'temp-01', operator: 'eq' }],
+  dateRange: { from: new Date(Date.now() - 60 * 60 * 1000) }, // Last hour
+  sortBy: 'created'
+});
 ```
 
-### 2. Research Tool
+### E-Commerce Catalog
 
 ```typescript
-async function researchTopic(topic: string, timeframe?: { from: Date; to: Date }) {
-  const client = createClient();
-  
-  const results = await client.searchFacts({
-    keywords: [topic],
-    status: ['verified', 'review'],
-    dateRange: timeframe,
-    limit: 50
-  });
-  
-  // Group by subtopics
-  const grouped = groupByTags(results.facts);
-  
-  // Generate research summary
-  return generateSummary(grouped);
-}
-```
-
-### 3. AI Agent Integration
-
-```typescript
-class FactCheckingAgent {
-  private client = createClient();
-  
-  async verifyStatement(statement: string): Promise<VerificationResult> {
-    // Parse statement into searchable components
-    const components = parseStatement(statement);
-    
-    // Search for supporting/contradicting facts
-    const supportingFacts = await this.client.searchFacts({
-      keywords: components.keywords,
-      status: ['verified']
-    });
-    
-    // Analyze confidence level
-    const confidence = calculateConfidence(supportingFacts.facts, statement);
-    
-    return {
-      statement,
-      confidence,
-      supportingFacts: supportingFacts.facts,
-      recommendation: confidence > 0.8 ? 'verified' : 'needs_review'
-    };
+// Store products
+await client.store({
+  sku: 'LAPTOP-001',
+  name: 'Gaming Laptop Pro',
+  category: 'Electronics',
+  price: 1299.99,
+  inStock: true,
+  specifications: {
+    cpu: 'Intel i7',
+    ram: '16GB',
+    storage: '1TB SSD'
   }
-}
+}, {
+  schema: 'product',
+  tags: ['laptop', 'gaming', 'electronics'],
+  categories: ['catalog']
+});
+
+// Search products
+const laptops = await client.query({
+  schema: ['product'],
+  fullTextSearch: 'laptop gaming',
+  fieldQueries: [
+    { field: 'category', value: 'Electronics', operator: 'eq' },
+    { field: 'price', value: 2000, operator: 'lt' },
+    { field: 'inStock', value: true, operator: 'eq' }
+  ]
+});
 ```
 
-## Rate Limiting
+## 🔧 Migration from v1.x
 
-The API implements rate limiting to ensure fair usage:
+If migrating from the NOCAP-specific v1.x SDK:
 
-- **Public API**: 100 requests per minute per IP
-- **Authenticated API**: 1000 requests per minute per API key (future)
+### Client Creation
+```typescript
+// v1.x (NOCAP-specific)
+import { createClient } from 'nocap-sdk';
+const client = createClient({ apiUrl: 'https://nocap.app/api' });
 
-Rate limit information is included in response headers:
-- `X-RateLimit-Limit`: Requests allowed per window
-- `X-RateLimit-Remaining`: Requests remaining in current window  
-- `X-RateLimit-Reset`: Time when the rate limit resets
+// v2.x (Generic)
+import { createClient } from 'walrus-data-sdk';
+const client = createClient({ 
+  publisherUrl: 'https://publisher.walrus-testnet.walrus.space' 
+});
+```
 
-## Caching
+### Data Storage
+```typescript
+// v1.x - Fact-specific
+const fact = await client.getFact(factId);
 
-The SDK implements intelligent caching:
-- **Memory Cache**: Recent requests cached for 5 minutes
-- **HTTP Cache**: Respects cache headers from the API
-- **Stale-While-Revalidate**: Serves cached content while fetching updates
+// v2.x - Generic data
+const item = await client.retrieve(dataId);
+```
 
-## Contributing
+### Querying
+```typescript
+// v1.x - Fact search
+const facts = await client.searchFacts({ 
+  keywords: ['climate'], 
+  status: ['verified'] 
+});
 
-We welcome contributions! Please see our [Contributing Guide](../CONTRIBUTING.md) for details.
+// v2.x - Generic query
+const items = await client.query({ 
+  fullTextSearch: 'climate',
+  fieldQueries: [{ field: 'status', value: 'verified', operator: 'eq' }]
+});
+```
 
-## License
+## 🚧 Roadmap
 
-MIT License - see [LICENSE](../LICENSE) for details.
+- **Q1 2024**
+  - ✅ v2.0.0 Generic SDK Release
+  - ✅ Real Walrus Integration
+  - ✅ O(1) Query Capabilities
+  - ✅ Advanced Caching
 
-## Support
+- **Q2 2024** 
+  - 🔄 External Index Service Integration
+  - 🔄 GraphQL Query Interface
+  - 🔄 Real-time Subscriptions via WebSockets
+  - 🔄 Multi-language Support (Python, Rust)
 
-- 📚 [Documentation](https://docs.nocap.app)
-- 💬 [Discord Community](https://discord.gg/nocap)
-- 🐛 [Report Issues](https://github.com/nocap-org/sdk/issues)
-- 📧 [Email Support](mailto:support@nocap.app)
+- **Q3 2024**
+  - 📋 Enterprise Features (Auth, RBAC)
+  - 📋 Data Migration Tools
+  - 📋 Performance Monitoring Dashboard
+  - 📋 Cloud-hosted Index Service
 
-## Changelog
+## 🤝 Contributing
 
-### v1.0.0
-- Initial release
-- Core fact retrieval and search functionality
-- TypeScript support
-- Comprehensive error handling
-- Built-in metrics and monitoring
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Development Setup
+
+```bash
+git clone https://github.com/walrus-data/sdk.git
+cd sdk
+npm install
+npm run dev
+```
+
+### Running Tests
+
+```bash
+npm test              # Unit tests
+npm run test:integration  # Integration tests
+npm run test:coverage     # Coverage report
+```
+
+### Building
+
+```bash
+npm run build         # Build for production
+npm run build:docs    # Generate documentation
+```
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## 🔗 Links
+
+- 🌐 **Walrus Network**: [https://walrus.space](https://walrus.space)
+- 📚 **SDK Documentation**: [https://docs.walrus-data.dev](https://docs.walrus-data.dev)
+- 🐛 **Report Issues**: [GitHub Issues](https://github.com/walrus-data/sdk/issues)
+- 💬 **Discord Community**: [Join our Discord](https://discord.gg/walrus-data)
+- 📧 **Email Support**: [support@walrus-data.dev](mailto:support@walrus-data.dev)
+
+## 📊 Changelog
+
+### v2.0.0 - 2024-01-15
+
+**🚀 Major Release - Generic Walrus Data SDK**
+
+#### Breaking Changes
+- Complete rewrite from NOCAP-specific to generic Walrus data SDK
+- New API design with `WalrusDataClient` replacing `NOCAPClient`
+- Schema-based data organization instead of fact-based
+- Updated error types and validation
+
+#### New Features
+- **Real Walrus Integration**: Direct integration with `@mysten/walrus` SDK
+- **O(1) Query Capabilities**: Efficient indexed lookups with caching
+- **Schema Management**: Auto-generation and validation of data schemas
+- **Multiple Store Interfaces**: KV store, document store, and generic client
+- **Advanced Querying**: Complex filters, full-text search, field queries
+- **Bulk Operations**: Efficient handling of large datasets
+- **Real-time Events**: Subscribe to data changes and updates
+- **Performance Optimization**: Built-in metrics and query optimization
+- **Smart Caching**: Configurable caching with TTL strategies
+
+#### Migration
+- See migration guide above for upgrading from v1.x
+- Breaking changes require code updates
+- Improved TypeScript support and type safety
+
+---
+
+**Built with ❤️ for the decentralized web**
