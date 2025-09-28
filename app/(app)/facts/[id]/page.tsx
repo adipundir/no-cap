@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Shield, Clock, TriangleAlert, ArrowLeft, GraduationCap } from "lucide-react";
 import { DEFAULT_ECON_PARAMS, previewReturn } from "@/lib/economics";
 import type { Fact } from "@/types/fact";
-import type { ContextComment } from "@/types/walrus";
 
 function StatusBadge({ status }: { status: Fact["status"] }) {
   if (status === "verified") {
@@ -38,11 +37,8 @@ export default function FactDetail() {
   const id = Array.isArray(params?.id) ? params?.id[0] : (params?.id as string);
 
   const [fact, setFact] = useState<Fact | null>(null);
-  const [contexts, setContexts] = useState<ContextComment[]>([]);
   const [choice, setChoice] = useState<"cap" | "nocap" | null>(null);
   const [stake, setStake] = useState(5);
-  const [context, setContext] = useState("");
-  const [isSubmittingContext, setIsSubmittingContext] = useState(false);
 
   useEffect(() => {
     async function loadFact() {
@@ -59,20 +55,8 @@ export default function FactDetail() {
       }
     }
 
-    async function loadComments() {
-      try {
-        const response = await fetch(`/api/comments?factId=${id}`);
-        if (!response.ok) return;
-        const data = await response.json();
-        setContexts(data.comments || []);
-      } catch (error) {
-        console.error("Failed to load comments:", error);
-      }
-    }
-
     if (id) {
       loadFact();
-      loadComments();
     }
   }, [id, router]);
 
@@ -94,40 +78,6 @@ export default function FactDetail() {
     ? previewReturn(choice, Math.max(0, stake), tallies, DEFAULT_ECON_PARAMS, 1)
     : null;
 
-  async function handleContextSubmit() {
-    if (!fact || context.trim().length < 10 || isSubmittingContext) return;
-    setIsSubmittingContext(true);
-    try {
-      const commentId = crypto.randomUUID();
-      const response = await fetch("/api/comments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: commentId,
-          factId: fact.id,
-          text: context,
-          author: "anon",
-          created: new Date().toISOString(),
-          votes: 0,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to submit context");
-      }
-
-      setContext("");
-      const data = await response.json();
-      setContexts((prev) => [...prev, data.comment]);
-    } catch (error) {
-      console.error("Failed to submit context:", error);
-      alert("Failed to submit context. Please try again.");
-    } finally {
-      setIsSubmittingContext(false);
-    }
-  }
 
   if (!fact) {
     return null;
@@ -191,23 +141,16 @@ export default function FactDetail() {
                   </div>
                 </div>
               )}
-              <div>
-                <label className="mb-1 block text-sm font-medium">Context (required)</label>
-                <textarea
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
-                  rows={4}
-                  placeholder="Add a brief context or reasoning for your Cap / No Cap."
-                  value={context}
-                  onChange={(e) => setContext(e.target.value)}
-                />
-              </div>
             </div>
             <div className="module-footer flex items-center justify-end">
               <Button
-                disabled={!choice || stake <= 0 || context.trim().length < 10 || isSubmittingContext}
-                onClick={handleContextSubmit}
+                disabled={!choice || stake <= 0}
+                onClick={() => {
+                  // TODO: Implement voting functionality with contract integration
+                  alert(`Voting ${choice?.toUpperCase()} with ${stake} ETH stake - Contract integration needed`);
+                }}
               >
-                {isSubmittingContext ? "Submitting..." : "Submit"}
+                Submit Vote
               </Button>
             </div>
           </Card>
@@ -256,27 +199,6 @@ export default function FactDetail() {
           </Card>
         </div>
 
-        <Card variant="module" className="p-0">
-          <div className="module-header">
-            <h2 className="text-base font-semibold">Contexts</h2>
-          </div>
-          <div className="module-content space-y-4">
-            {contexts.length === 0 && (
-              <div className="rounded-lg border bg-background px-3 py-2 text-sm text-muted-foreground">
-                No contexts yet. Start the discussion by sharing your take.
-              </div>
-            )}
-            {contexts.map((c) => (
-              <div key={c.id} className="rounded-lg border bg-background px-3 py-2 text-sm">
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                  <span>{c.author || "anon"}</span>
-                  <span>{new Date(c.created).toLocaleString()}</span>
-                </div>
-                <p>{c.text}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
       </div>
     </div>
   );
