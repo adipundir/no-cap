@@ -25,7 +25,9 @@ import {
   LogOut, 
   RefreshCw,
   Sun,
-  Moon
+  Moon,
+  Home,
+  PlusCircle
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { fetchUserBalances } from '@/lib/actions/fetch-balances'
@@ -197,25 +199,30 @@ export default function Navbar() {
               <span className="sr-only">Toggle Menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="pr-0">
-            <Link
-              className="flex items-center"
-              href="/"
-            >
-              <span className="font-bold">NOCAP</span>
-            </Link>
-            <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
-              <div className="flex flex-col space-y-3">
+          <SheetContent side="left" className="p-0">
+            <div className="border-b px-6 py-4">
+              <Link
+                className="flex items-center text-lg font-semibold"
+                href="/"
+              >
+                <span className="font-bold">NOCAP</span>
+              </Link>
+            </div>
+            <div className="h-[calc(100vh-4rem)] overflow-y-auto py-4">
+              <nav className="flex flex-col gap-1">
                 <SheetClose asChild>
-                  <Link href="/feed">Feed</Link>
+                  <Link href="/feed" className="flex items-center gap-3 px-6 py-3 text-base font-medium hover:bg-muted">
+                    <Home className="h-5 w-5" />
+                    Feed
+                  </Link>
                 </SheetClose>
                 <SheetClose asChild>
-                  <Link href="/submit">Submit</Link>
+                  <Link href="/submit" className="flex items-center gap-3 px-6 py-3 text-base font-medium hover:bg-muted">
+                    <PlusCircle className="h-5 w-5" />
+                    Submit
+                  </Link>
                 </SheetClose>
-                <SheetClose asChild>
-                  <Link href="/dashboard">Dashboard</Link>
-                </SheetClose>
-              </div>
+              </nav>
             </div>
           </SheetContent>
         </Sheet>

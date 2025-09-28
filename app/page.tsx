@@ -8,7 +8,7 @@ export default function Home() {
       {/* HERO SECTION */}
       <main className="flex flex-col items-center justify-center px-4 py-6 md:py-12 h-[100dvh] md:h-auto">
         <div className="w-full max-w-sm md:max-w-4xl text-center flex flex-col items-center justify-center">
-          <div className="relative h-[150px] md:h-[260px] mb-10 mt-32 md:mb-20 w-full md:mt-0" >
+          <div className="relative h-[150px] md:h-[260px] mb-10 mt-36 md:mb-20 w-full md:mt-0" >
             <TextPressure
               text="NOCAP"
               flex={true}
@@ -28,18 +28,20 @@ export default function Home() {
               Community-driven fact verification. Anonymous reviews. On-chain transparency.
             </p>
             
-            <Button size="lg" className="px-6 py-2 md:px-8 md:py-3 text-base md:text-lg mb-20" asChild>
+            <Button size="lg" className="px-6 py-2 md:px-8 md:py-3 text-base md:text-lg mb-8 md:mb-12" asChild>
               <a href="/feed">Launch App</a>
             </Button>
 
             {/* CurvedLoop Animation */}
-            <div className="mt-20 md:mt-8">
+            <div className="mt-8 md:mt-12">
               <CurvedLoop 
                 marqueeText="Verify ✦ Facts ✦ Earn ✦ Rewards ✦ Stay ✦ Anonymous ✦"
                 speed={2}
                 curveAmount={260}
                 direction="right"
                 interactive={true}
+                topPadding={50}
+                bottomPadding={8}
                 className="text-muted-foreground"
               />
             </div>
