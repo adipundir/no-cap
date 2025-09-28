@@ -421,16 +421,4 @@ export class NOCAPWalrusService {
   }
 }
 
-function notifyFallback(message: string, timestamp: Date) {
-  if (isServer()) {
-    console.warn(`[Walrus fallback] ${message}`, timestamp.toISOString())
-    return
-  }
-
-  import('sonner').then(({ toast }) => {
-    toast.warning(message, { description: timestamp.toLocaleTimeString() })
-  }).catch((error) => {
-    console.warn('Failed to load toast module for Walrus fallback', error)
-  })
-}
 

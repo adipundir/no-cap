@@ -98,7 +98,7 @@ export async function prepareFactForWalrus(
     const contentHash = generateContentHash(factContent)
     
     console.log('Fact prepared for Walrus:', {
-      walrusBlobId,
+      walrusBlobId: walrusResult.blobId,
       contentHash,
       title: factContent.title,
       category: factContent.category,

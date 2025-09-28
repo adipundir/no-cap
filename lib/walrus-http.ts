@@ -66,7 +66,7 @@ export class WalrusHttpService {
         headers: {
           'Content-Type': 'application/octet-stream',
         },
-        body: blob.buffer,
+        body: blob,
       })
 
       if (!response.ok) {

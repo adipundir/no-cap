@@ -1,296 +1,611 @@
 /**
- * NOCAP SDK Client
+ * Walrus Data SDK Client
  * 
- * Main client class providing access to NOCAP verified facts database
+ * Main client class providing generic access to structured data stored on Walrus
  */
 
+// HTTP-based Walrus integration - no external dependencies needed
+
+/**
+ * Simple HTTP-based Walrus client for direct API calls
+ */
+class SimpleWalrusClient {
+  private publisherUrl: string;
+  private aggregatorUrl: string;
+
+  constructor(publisherUrl: string, aggregatorUrl: string) {
+    this.publisherUrl = publisherUrl;
+    this.aggregatorUrl = aggregatorUrl;
+  }
+
+  async store(options: { data: Buffer | Uint8Array; epochs: number }): Promise<{
+    blobId: string;
+    encodedSize: number;
+    cost: string;
+  }> {
+    try {
+      // Convert Buffer to Uint8Array for web compatibility
+      const body = options.data instanceof Buffer 
+        ? new Uint8Array(options.data) 
+        : options.data;
+
+      const response = await fetch(`${this.publisherUrl}/v1/store?epochs=${options.epochs}`, {
+        method: 'PUT',
+        body: body as BodyInit,
+        headers: {
+          'Content-Type': 'application/octet-stream'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return {
+        blobId: result.alreadyCertified?.blobId || result.newlyCreated?.blobObject?.blobId || 'unknown',
+        encodedSize: result.alreadyCertified?.encodedSize || result.newlyCreated?.encodedSize || 0,
+        cost: '0' // Simplified for now
+      };
+    } catch (error) {
+      throw new Error(`Walrus store failed: ${error}`);
+    }
+  }
+
+  async retrieve(blobId: string): Promise<{ data: ArrayBuffer }> {
+    try {
+      const response = await fetch(`${this.aggregatorUrl}/v1/${blobId}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.arrayBuffer();
+      return { data };
+    } catch (error) {
+      throw new Error(`Walrus retrieve failed: ${error}`);
+    }
+  }
+}
+
 import {
-  NOCAPConfig,
-  NOCAPClientOptions,
-  NOCAPFact,
-  NOCAPFactDetails,
-  NOCAPSearchQuery,
-  NOCAPSearchResults,
-  NOCAPPaginationOptions,
-  NOCAPPaginatedResponse,
-  NOCAPIndexStats,
-  NOCAPHealthCheck,
-  NOCAPError,
-  NOCAPNetworkError,
-  NOCAPValidationError,
-  NOCAPNotFoundError,
-  NOCAPRateLimitError,
-  NOCAPBulkQuery,
-  NOCAPBulkResponse,
-  NOCAPRateLimit,
-  NOCAPMetrics
+  WalrusDataConfig,
+  WalrusDataClientOptions,
+  WalrusDataItem,
+  WalrusQueryOptions,
+  WalrusSearchQuery,
+  WalrusQueryResults,
+  WalrusPaginationOptions,
+  WalrusPaginatedResponse,
+  WalrusStoreOptions,
+  WalrusStoreResult,
+  WalrusRetrieveResult,
+  WalrusBulkQuery,
+  WalrusBulkResult,
+  WalrusIndexStats,
+  WalrusHealthCheck,
+  WalrusDataError,
+  WalrusNetworkError,
+  WalrusValidationError,
+  WalrusNotFoundError,
+  WalrusStorageError,
+  WalrusRateLimitError,
+  WalrusIndexError,
+  WalrusMetrics,
+  WalrusCache,
+  WalrusIndex,
+  WalrusIndexQuery,
+  WalrusIndexResult,
+  WalrusDataSchema,
+  WalrusDataEvent,
+  WalrusEventCallback,
+  WalrusSubscriptionOptions
 } from './types';
 
 /**
- * NOCAP Client - Main SDK class
+ * Default configuration for Walrus Data Client
  */
-export class NOCAPClient {
-  private config: NOCAPConfig;
+const DEFAULT_CONFIG: WalrusDataConfig = {
+  publisherUrl: 'https://publisher.walrus-testnet.walrus.space',
+  aggregatorUrl: 'https://aggregator.walrus-testnet.walrus.space',
+  timeout: 30000,
+  retries: 3,
+  retryDelay: 1000,
+  userAgent: 'walrus-data-sdk/2.0.0',
+  maxBlobSize: 10 * 1024 * 1024, // 10MB
+  defaultEpochs: 5
+};
+
+/**
+ * Simple in-memory cache implementation
+ */
+class MemoryCache implements WalrusCache {
+  private cache = new Map<string, { value: any; expires: number }>();
+  private maxSize: number;
+
+  constructor(maxSize = 1000) {
+    this.maxSize = maxSize;
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    const item = this.cache.get(key);
+    if (!item) return null;
+    
+    if (Date.now() > item.expires) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return item.value as T;
+  }
+
+  async set<T>(key: string, value: T, ttl = 300000): Promise<void> { // 5 minutes default
+    // Remove oldest entries if at capacity
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) this.cache.delete(firstKey);
+    }
+    
+    this.cache.set(key, {
+      value,
+      expires: Date.now() + ttl
+    });
+  }
+
+  async delete(key: string): Promise<void> {
+    this.cache.delete(key);
+  }
+
+  async clear(): Promise<void> {
+    this.cache.clear();
+  }
+
+  async size(): Promise<number> {
+    return this.cache.size;
+  }
+
+  async keys(): Promise<string[]> {
+    return Array.from(this.cache.keys());
+  }
+}
+
+/**
+ * Walrus Data Client - Main SDK class for generic data operations
+ */
+export class WalrusDataClient {
+  private config: WalrusDataConfig;
+  private walrusClient: SimpleWalrusClient;
+  private cache?: WalrusCache;
   private requestCounter = 0;
-  private metrics: NOCAPMetrics = {
+  private indexes: Map<string, WalrusIndex> = new Map();
+  private schemas: Map<string, WalrusDataSchema> = new Map();
+  private eventHandlers: Map<string, WalrusEventCallback[]> = new Map();
+  
+  private metrics: WalrusMetrics = {
     requestCount: 0,
     avgResponseTime: 0,
     errorRate: 0,
     cacheHitRate: 0,
-    walrusLatency: 0
+    storageLatency: 0,
+    retrievalLatency: 0,
+    indexQueryTime: 0,
+    throughput: 0
   };
 
-  constructor(options: NOCAPClientOptions = {}) {
+  constructor(options: WalrusDataClientOptions = {}) {
     this.config = {
-      apiUrl: options.apiUrl || 'https://nocap.app/api',
-      timeout: options.timeout || 30000,
-      retries: options.retries || 3,
-      retryDelay: options.retryDelay || 1000,
-      userAgent: options.userAgent || 'nocap-sdk/1.0.0'
+      ...DEFAULT_CONFIG,
+      ...options
     };
+
+    // Initialize HTTP-based Walrus client
+    this.walrusClient = new SimpleWalrusClient(
+      this.config.publisherUrl,
+      this.config.aggregatorUrl
+    );
+    
+    // Initialize cache if enabled
+    if (options.enableCaching !== false) {
+      this.cache = new MemoryCache();
+    }
+
+    console.log('Walrus Data SDK v2.0.0 initialized with HTTP Walrus client');
   }
 
   /**
-   * Get all facts with optional pagination
+   * Store structured data on Walrus with indexing
    */
-  async getFacts(options?: NOCAPPaginationOptions): Promise<NOCAPPaginatedResponse<NOCAPFact>> {
+  async store<T = any>(
+    data: T, 
+    options: WalrusStoreOptions = {}
+  ): Promise<WalrusStoreResult> {
     const startTime = Date.now();
     
     try {
-      const params = new URLSearchParams();
-      if (options?.limit) params.append('limit', options.limit.toString());
-      if (options?.offset) params.append('offset', options.offset.toString());
-
-      const response = await this.makeRequest(`/facts?${params}`);
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
-
-      return {
-        data: response.facts || [],
-        totalCount: response.totalCount || 0,
-        limit: options?.limit || 10,
-        offset: options?.offset || 0,
-        hasMore: (response.facts?.length || 0) === (options?.limit || 10)
+      this.validateStoreOptions(options);
+      
+      // Create data item with metadata
+      const dataId = this.generateDataId();
+      const now = new Date();
+      
+      const dataItem: WalrusDataItem<T> = {
+        id: dataId,
+        blobId: '', // Will be set after storage
+        data,
+        metadata: {
+          created: now,
+          updated: now,
+          version: 1,
+          size: 0, // Will be calculated
+          contentType: options.metadata?.contentType || 'application/json',
+          author: options.metadata?.author,
+          signature: options.metadata?.signature,
+          indexes: options.customIndexes,
+          ...options.metadata
+        },
+        contentHash: '',
+        schema: options.schema,
+        tags: options.tags,
+        categories: options.categories
       };
-    } catch (error) {
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
-      throw error;
-    }
-  }
 
-  /**
-   * Get a specific fact by ID
-   */
-  async getFact(factId: string): Promise<NOCAPFactDetails> {
-    if (!factId || typeof factId !== 'string') {
-      throw new NOCAPValidationError('Fact ID is required and must be a string');
-    }
+      // Serialize data
+      const serializedData = JSON.stringify(dataItem);
+      const dataBuffer = Buffer.from(serializedData, 'utf-8');
+      
+      dataItem.metadata.size = dataBuffer.length;
+      dataItem.contentHash = this.generateContentHash(serializedData);
 
-    const startTime = Date.now();
-    
-    try {
-      const response = await this.makeRequest(`/facts/${encodeURIComponent(factId)}`);
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
-
-      if (!response.fact) {
-        throw new NOCAPNotFoundError(`Fact with ID '${factId}' not found`);
+      // Validate size
+      if (dataBuffer.length > this.config.maxBlobSize) {
+        throw new WalrusValidationError(
+          `Data too large: ${dataBuffer.length} bytes (max: ${this.config.maxBlobSize})`
+        );
       }
 
-      // Transform response to match NOCAPFactDetails interface
+      // Store on Walrus
+      const storeResult = await this.walrusClient.store({
+        data: dataBuffer,
+        epochs: options.epochs || this.config.defaultEpochs
+      });
+
+      dataItem.blobId = storeResult.blobId;
+
+      // Cache the item if caching is enabled
+      if (this.cache) {
+        await this.cache.set(`data:${dataId}`, dataItem);
+        await this.cache.set(`blob:${storeResult.blobId}`, dataItem);
+      }
+
+      // Update indexes if enabled
+      if (options.enableIndexing !== false) {
+        await this.updateIndexes(dataItem);
+      }
+
+      const responseTime = Date.now() - startTime;
+      this.updateMetrics(responseTime, false, 'store');
+
+      // Emit event
+      this.emitEvent({
+        type: 'created',
+        dataId,
+        blobId: storeResult.blobId,
+        data: dataItem,
+        timestamp: now
+      });
+
       return {
-        ...response.fact,
-        fullContent: response.fullContent,
-        sources: response.sources || [],
-        tags: response.fact.metadata?.tags?.map((tag: any) => 
-          typeof tag === 'string' ? { name: tag, category: 'type' } : tag
-        ) || [],
-        keywords: this.extractKeywords(response.fact.title, response.fact.summary),
-        blobId: response.fact.walrusBlobId || ''
+        blobId: storeResult.blobId,
+        dataId,
+        size: dataBuffer.length,
+        encodedSize: storeResult.encodedSize,
+        cost: storeResult.cost.toString(),
+        metadata: dataItem.metadata
       };
+
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
+      this.updateMetrics(responseTime, true, 'store');
       
-      if (error instanceof NOCAPError) {
+      if (error instanceof WalrusDataError) {
         throw error;
       }
-      throw new NOCAPNetworkError(`Failed to fetch fact: ${error}`);
+      throw new WalrusStorageError(`Failed to store data: ${error}`);
     }
   }
 
   /**
-   * Search facts using indexed search
+   * Retrieve data by ID or blob ID
    */
-  async searchFacts(query: NOCAPSearchQuery): Promise<NOCAPSearchResults> {
+  async retrieve<T = any>(
+    id: string, 
+    isBlob = false
+  ): Promise<WalrusRetrieveResult<T>> {
     const startTime = Date.now();
+    let cached = false;
     
     try {
-      // Validate search query
-      this.validateSearchQuery(query);
+      // Check cache first
+      if (this.cache) {
+        const cacheKey = isBlob ? `blob:${id}` : `data:${id}`;
+        const cachedItem = await this.cache.get<WalrusDataItem<T>>(cacheKey);
+        if (cachedItem) {
+          cached = true;
+          this.updateCacheMetrics(true);
+          return {
+            item: cachedItem,
+            cached: true,
+            retrievalTime: Date.now() - startTime
+          };
+        }
+        this.updateCacheMetrics(false);
+      }
 
-      const response = await this.makeRequest('/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(query)
-      });
+      // If we have a data ID but need blob ID, look it up
+      let blobId = isBlob ? id : await this.lookupBlobId(id);
+      
+      if (!blobId) {
+        throw new WalrusNotFoundError(`Data item with ID '${id}' not found`);
+      }
+
+      // Retrieve from Walrus
+      const retrieveResult = await this.walrusClient.retrieve(blobId);
+      
+      // Parse the data
+      const serializedData = new TextDecoder().decode(retrieveResult.data);
+      const dataItem: WalrusDataItem<T> = JSON.parse(serializedData);
+
+      // Verify integrity
+      const expectedHash = this.generateContentHash(serializedData);
+      if (dataItem.contentHash !== expectedHash) {
+        throw new WalrusStorageError('Data integrity check failed');
+      }
+
+      // Cache the item
+      if (this.cache) {
+        await this.cache.set(`data:${dataItem.id}`, dataItem);
+        await this.cache.set(`blob:${blobId}`, dataItem);
+      }
 
       const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
+      this.updateMetrics(responseTime, false, 'retrieve');
 
       return {
-        facts: response.facts || [],
-        totalCount: response.totalCount || 0,
-        searchTime: response.searchTime || responseTime,
-        query: response.query || query
+        item: dataItem,
+        cached,
+        retrievalTime: responseTime
       };
+
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
+      this.updateMetrics(responseTime, true, 'retrieve');
+      
+      if (error instanceof WalrusDataError) {
+        throw error;
+      }
+      throw new WalrusNetworkError(`Failed to retrieve data: ${error}`);
+    }
+  }
+
+  /**
+   * Query data with O(1) indexed lookups when possible
+   */
+  async query<T = any>(
+    query: WalrusSearchQuery<T>
+  ): Promise<WalrusQueryResults<T>> {
+    const startTime = Date.now();
+    
+    try {
+      this.validateQuery(query);
+
+      // Try to use indexes for O(1) lookup
+      const indexResult = await this.tryIndexedQuery(query);
+      if (indexResult) {
+        const queryTime = Date.now() - startTime;
+        this.updateMetrics(queryTime, false, 'query');
+        return {
+          ...indexResult,
+          queryTime
+        };
+      }
+
+      // Fallback to full scan (for development/small datasets)
+      return await this.fullScanQuery(query, startTime);
+      
+    } catch (error) {
+      const queryTime = Date.now() - startTime;
+      this.updateMetrics(queryTime, true, 'query');
       throw error;
     }
   }
 
   /**
-   * Search facts by keywords (convenience method)
+   * Get multiple items in bulk
    */
-  async searchByKeywords(keywords: string[], options?: NOCAPPaginationOptions): Promise<NOCAPSearchResults> {
-    return this.searchFacts({
-      keywords,
-      ...options
-    });
-  }
-
-  /**
-   * Search facts by tags (convenience method)
-   */
-  async searchByTags(tags: string[], options?: NOCAPPaginationOptions): Promise<NOCAPSearchResults> {
-    return this.searchFacts({
-      tags,
-      ...options
-    });
-  }
-
-  /**
-   * Get facts by author (convenience method)
-   */
-  async getFactsByAuthor(author: string, options?: NOCAPPaginationOptions): Promise<NOCAPSearchResults> {
-    return this.searchFacts({
-      authors: [author],
-      ...options
-    });
-  }
-
-  /**
-   * Get facts by status (convenience method)
-   */
-  async getFactsByStatus(status: 'verified' | 'review' | 'flagged', options?: NOCAPPaginationOptions): Promise<NOCAPSearchResults> {
-    return this.searchFacts({
-      status: [status],
-      ...options
-    });
-  }
-
-  /**
-   * Get bulk facts by IDs
-   */
-  async getBulkFacts(query: NOCAPBulkQuery): Promise<NOCAPBulkResponse> {
-    if (!query.factIds || !Array.isArray(query.factIds) || query.factIds.length === 0) {
-      throw new NOCAPValidationError('factIds array is required and must not be empty');
-    }
-
-    if (query.factIds.length > 100) {
-      throw new NOCAPValidationError('Maximum 100 fact IDs allowed per bulk request');
-    }
-
+  async getBulk<T = any>(query: WalrusBulkQuery): Promise<WalrusBulkResult<T>> {
     const startTime = Date.now();
-    
+    const results: WalrusDataItem<T>[] = [];
+    const errors: Array<{ id: string; error: string; code?: string }> = [];
+
     try {
-      const response = await this.makeRequest('/facts/bulk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(query)
-      });
+      let idsToFetch: string[] = [];
+      
+      if (query.dataIds) {
+        idsToFetch = query.dataIds;
+      } else if (query.blobIds) {
+        idsToFetch = query.blobIds;
+      } else if (query.query) {
+        const queryResult = await this.query(query.query);
+        idsToFetch = queryResult.items.map(item => item.id);
+      }
+
+      // Process in batches to avoid overwhelming Walrus
+      const batchSize = 10;
+      for (let i = 0; i < idsToFetch.length; i += batchSize) {
+        const batch = idsToFetch.slice(i, i + batchSize);
+        const batchPromises = batch.map(async (id) => {
+          try {
+            const result = await this.retrieve<T>(id, query.blobIds !== undefined);
+            return result.item;
+          } catch (error) {
+            errors.push({
+              id,
+              error: error instanceof Error ? error.message : String(error),
+              code: error instanceof WalrusDataError ? error.code : undefined
+            });
+            return null;
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...batchResults.filter(item => item !== null) as WalrusDataItem<T>[]);
+      }
 
       const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
-
-      return response;
-    } catch (error) {
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
-      throw error;
-    }
-  }
-
-  /**
-   * Get index statistics
-   */
-  async getIndexStats(): Promise<NOCAPIndexStats> {
-    const startTime = Date.now();
-    
-    try {
-      const response = await this.makeRequest('/index/stats');
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
-
-      return response.stats;
-    } catch (error) {
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
-      throw error;
-    }
-  }
-
-  /**
-   * Health check
-   */
-  async healthCheck(): Promise<NOCAPHealthCheck> {
-    const startTime = Date.now();
-    
-    try {
-      const response = await this.makeRequest('/health');
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
+      this.updateMetrics(responseTime, false, 'bulk');
 
       return {
-        status: response.status || 'healthy',
-        version: response.version || '1.0.0',
-        uptime: response.uptime || 0,
-        walrusStatus: response.walrusStatus || {
-          available: true,
-          latency: responseTime,
-          nodes: 1
+        items: results,
+        errors,
+        totalRequested: idsToFetch.length,
+        totalReturned: results.length,
+        totalErrors: errors.length
+      };
+
+    } catch (error) {
+      const responseTime = Date.now() - startTime;
+      this.updateMetrics(responseTime, true, 'bulk');
+      throw error;
+    }
+  }
+
+  /**
+   * Get comprehensive statistics about indexed data
+   */
+  async getStats(): Promise<WalrusIndexStats> {
+    const startTime = Date.now();
+    
+    try {
+      // This would typically query an external index service
+      // For now, return mock stats based on cache if available
+      const stats: WalrusIndexStats = {
+        totalItems: 0,
+        totalBlobs: 0,
+        totalSize: 0,
+        schemas: {},
+        categories: {},
+        tags: {},
+        authors: {},
+        indexLastUpdated: new Date().toISOString(),
+        indexSize: 0
+      };
+
+      if (this.cache) {
+        const keys = await this.cache.keys();
+        const dataKeys = keys.filter(key => key.startsWith('data:'));
+        stats.totalItems = dataKeys.length;
+        
+        // Sample some items to build stats
+        for (const key of dataKeys.slice(0, 100)) {
+          const item = await this.cache.get<WalrusDataItem>(key);
+          if (item) {
+            stats.totalSize += item.metadata.size;
+            
+            if (item.schema) {
+              stats.schemas[item.schema] = (stats.schemas[item.schema] || 0) + 1;
+            }
+            
+            if (item.categories) {
+              item.categories.forEach(cat => {
+                stats.categories[cat] = (stats.categories[cat] || 0) + 1;
+              });
+            }
+            
+            if (item.tags) {
+              item.tags.forEach(tag => {
+                stats.tags[tag] = (stats.tags[tag] || 0) + 1;
+              });
+            }
+            
+            if (item.metadata.author) {
+              stats.authors[item.metadata.author] = (stats.authors[item.metadata.author] || 0) + 1;
+            }
+          }
+        }
+      }
+
+      const responseTime = Date.now() - startTime;
+      this.updateMetrics(responseTime, false, 'stats');
+      
+      return stats;
+      
+    } catch (error) {
+      const responseTime = Date.now() - startTime;
+      this.updateMetrics(responseTime, true, 'stats');
+      throw new WalrusIndexError(`Failed to get stats: ${error}`);
+    }
+  }
+
+  /**
+   * Health check for Walrus network and indexing
+   */
+  async healthCheck(): Promise<WalrusHealthCheck> {
+    const startTime = Date.now();
+    
+    try {
+      // Test Walrus connectivity
+      const publisherTest = await this.testEndpoint(this.config.publisherUrl);
+      const aggregatorTest = await this.testEndpoint(this.config.aggregatorUrl);
+      
+      const status = publisherTest && aggregatorTest ? 'healthy' : 'degraded';
+      
+      const health: WalrusHealthCheck = {
+        status,
+        version: '2.0.0',
+        uptime: Date.now() - startTime,
+        walrusStatus: {
+          available: publisherTest && aggregatorTest,
+          publisherLatency: publisherTest ? 100 : -1, // Mock values
+          aggregatorLatency: aggregatorTest ? 100 : -1,
+          nodes: publisherTest && aggregatorTest ? 1 : 0
         },
-        indexStatus: response.indexStatus || {
+        indexStatus: {
           available: true,
           lastSync: new Date().toISOString(),
-          facts: 0
+          items: 0, // Would be populated by real index
+          syncLag: 0
         },
         timestamp: new Date().toISOString()
       };
-    } catch (error) {
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
+
+      if (this.cache) {
+        const cacheSize = await this.cache.size();
+        health.cacheStatus = {
+          available: true,
+          hitRate: this.metrics.cacheHitRate,
+          size: cacheSize,
+          maxSize: 1000 // Default cache size
+        };
+      }
+
+      return health;
       
+    } catch (error) {
       return {
         status: 'unhealthy',
-        version: '1.0.0',
-        uptime: 0,
+        version: '2.0.0',
+        uptime: Date.now() - startTime,
         walrusStatus: {
           available: false,
-          latency: responseTime,
+          publisherLatency: -1,
+          aggregatorLatency: -1,
           nodes: 0
         },
         indexStatus: {
           available: false,
           lastSync: new Date().toISOString(),
-          facts: 0
+          items: 0,
+          syncLag: -1
         },
         timestamp: new Date().toISOString()
       };
@@ -300,12 +615,12 @@ export class NOCAPClient {
   /**
    * Get SDK metrics
    */
-  getMetrics(): NOCAPMetrics {
+  getMetrics(): WalrusMetrics {
     return { ...this.metrics };
   }
 
   /**
-   * Reset SDK metrics
+   * Reset metrics
    */
   resetMetrics(): void {
     this.metrics = {
@@ -313,147 +628,232 @@ export class NOCAPClient {
       avgResponseTime: 0,
       errorRate: 0,
       cacheHitRate: 0,
-      walrusLatency: 0
+      storageLatency: 0,
+      retrievalLatency: 0,
+      indexQueryTime: 0,
+      throughput: 0
     };
   }
 
   /**
-   * Update configuration
+   * Subscribe to real-time data events
    */
-  updateConfig(updates: Partial<NOCAPConfig>): void {
-    this.config = { ...this.config, ...updates };
+  subscribe<T = any>(
+    callback: WalrusEventCallback<T>, 
+    options: WalrusSubscriptionOptions = {}
+  ): string {
+    const subscriptionId = `sub-${Date.now()}-${Math.random()}`;
+    
+    if (!this.eventHandlers.has('all')) {
+      this.eventHandlers.set('all', []);
+    }
+    
+    this.eventHandlers.get('all')!.push(callback);
+    
+    return subscriptionId;
   }
 
   /**
-   * Get current configuration
+   * Unsubscribe from events
    */
-  getConfig(): NOCAPConfig {
-    return { ...this.config };
+  unsubscribe(subscriptionId: string): void {
+    // Implementation would remove the specific callback
+    // For now, just clear all handlers
+    this.eventHandlers.clear();
   }
 
   // Private methods
 
-  private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
-    const url = `${this.config.apiUrl}${endpoint}`;
-    const requestId = `req-${++this.requestCounter}-${Date.now()}`;
-    
-    const requestOptions: RequestInit = {
-      headers: {
-        'User-Agent': this.config.userAgent,
-        'X-Request-ID': requestId,
-        ...options.headers
-      },
-      ...options
-    };
-
-    let lastError: Error | null = null;
-    
-    for (let attempt = 0; attempt <= this.config.retries; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
-        
-        const response = await fetch(url, {
-          ...requestOptions,
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          let errorData;
-          
-          try {
-            errorData = JSON.parse(errorText);
-          } catch {
-            errorData = { error: errorText };
-          }
-
-          switch (response.status) {
-            case 404:
-              throw new NOCAPNotFoundError(errorData.error || 'Resource not found', errorData);
-            case 429:
-              throw new NOCAPRateLimitError(errorData.error || 'Rate limit exceeded', errorData);
-            case 400:
-              throw new NOCAPValidationError(errorData.error || 'Invalid request', errorData);
-            default:
-              throw new NOCAPNetworkError(
-                `HTTP ${response.status}: ${errorData.error || 'Unknown error'}`,
-                { status: response.status, ...errorData }
-              );
-          }
-        }
-
-        const data = await response.json();
-        return data;
-        
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        
-        if (error instanceof NOCAPError || attempt === this.config.retries) {
-          throw error;
-        }
-        
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, this.config.retryDelay * (attempt + 1)));
-      }
+  private validateStoreOptions(options: WalrusStoreOptions): void {
+    if (options.epochs && (options.epochs < 1 || options.epochs > 100)) {
+      throw new WalrusValidationError('Epochs must be between 1 and 100');
     }
-
-    throw lastError || new NOCAPNetworkError('Unknown network error');
   }
 
-  private validateSearchQuery(query: NOCAPSearchQuery): void {
-    if (!query || typeof query !== 'object') {
-      throw new NOCAPValidationError('Search query must be an object');
+  private validateQuery<T>(query: WalrusSearchQuery<T>): void {
+    if (query.limit && (query.limit < 1 || query.limit > 1000)) {
+      throw new WalrusValidationError('Limit must be between 1 and 1000');
     }
-
-    if (query.limit && (query.limit < 1 || query.limit > 100)) {
-      throw new NOCAPValidationError('Limit must be between 1 and 100');
-    }
-
+    
     if (query.offset && query.offset < 0) {
-      throw new NOCAPValidationError('Offset must be non-negative');
-    }
-
-    if (query.keywords && (!Array.isArray(query.keywords) || query.keywords.some(k => typeof k !== 'string'))) {
-      throw new NOCAPValidationError('Keywords must be an array of strings');
-    }
-
-    if (query.tags && (!Array.isArray(query.tags) || query.tags.some(t => typeof t !== 'string'))) {
-      throw new NOCAPValidationError('Tags must be an array of strings');
-    }
-
-    if (query.authors && (!Array.isArray(query.authors) || query.authors.some(a => typeof a !== 'string'))) {
-      throw new NOCAPValidationError('Authors must be an array of strings');
-    }
-
-    if (query.status && (!Array.isArray(query.status) || query.status.some(s => !['verified', 'review', 'flagged'].includes(s)))) {
-      throw new NOCAPValidationError('Status must be an array of valid status values');
-    }
-
-    if (query.dateRange) {
-      if (query.dateRange.from && !(query.dateRange.from instanceof Date)) {
-        throw new NOCAPValidationError('dateRange.from must be a Date object');
-      }
-      if (query.dateRange.to && !(query.dateRange.to instanceof Date)) {
-        throw new NOCAPValidationError('dateRange.to must be a Date object');
-      }
-      if (query.dateRange.from && query.dateRange.to && query.dateRange.from > query.dateRange.to) {
-        throw new NOCAPValidationError('dateRange.from must be before dateRange.to');
-      }
+      throw new WalrusValidationError('Offset must be non-negative');
     }
   }
 
-  private extractKeywords(title: string, summary: string): string[] {
-    const text = `${title} ${summary}`.toLowerCase();
-    const words = text.match(/\b[a-zA-Z]{3,}\b/g) || [];
-    const stopWords = new Set(['the', 'and', 'but', 'not', 'are', 'was', 'were', 'been', 'have', 'has', 'had']);
+  private generateDataId(): string {
+    return `data-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  private generateContentHash(content: string): string {
+    // Simple hash function - in production, use a proper crypto hash
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(16);
+  }
+
+  private async lookupBlobId(dataId: string): Promise<string | null> {
+    // In a real implementation, this would query an external index
+    // For now, check cache
+    if (this.cache) {
+      const item = await this.cache.get<WalrusDataItem>(`data:${dataId}`);
+      return item?.blobId || null;
+    }
+    return null;
+  }
+
+  private async updateIndexes<T>(dataItem: WalrusDataItem<T>): Promise<void> {
+    // In a real implementation, this would update external indexes
+    // For now, just log the action
+    console.log(`Indexing data item: ${dataItem.id}`);
+  }
+
+  private async tryIndexedQuery<T>(
+    query: WalrusSearchQuery<T>
+  ): Promise<WalrusQueryResults<T> | null> {
+    // In a real implementation, this would use external indexes for O(1) lookups
+    // For now, return null to fall back to full scan
+    return null;
+  }
+
+  private async fullScanQuery<T>(
+    query: WalrusSearchQuery<T>,
+    startTime: number
+  ): Promise<WalrusQueryResults<T>> {
+    const items: WalrusDataItem<T>[] = [];
     
-    return Array.from(new Set(words.filter(word => !stopWords.has(word))));
+    if (this.cache) {
+      const keys = await this.cache.keys();
+      const dataKeys = keys.filter(key => key.startsWith('data:'));
+      
+      for (const key of dataKeys) {
+        const item = await this.cache.get<WalrusDataItem<T>>(key);
+        if (item && this.matchesQuery(item, query)) {
+          items.push(item);
+        }
+      }
+    }
+
+    // Apply sorting
+    if (query.sortBy) {
+      items.sort((a, b) => {
+        let aVal: any, bVal: any;
+        
+        switch (query.sortBy) {
+          case 'created':
+            aVal = new Date(a.metadata.created);
+            bVal = new Date(b.metadata.created);
+            break;
+          case 'updated':
+            aVal = new Date(a.metadata.updated);
+            bVal = new Date(b.metadata.updated);
+            break;
+          case 'size':
+            aVal = a.metadata.size;
+            bVal = b.metadata.size;
+            break;
+          default:
+            return 0;
+        }
+        
+        if (query.sortOrder === 'desc') {
+          return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+        } else {
+          return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        }
+      });
+    }
+
+    // Apply pagination
+    const offset = query.offset || 0;
+    const limit = query.limit || 100;
+    const paginatedItems = items.slice(offset, offset + limit);
+
+    return {
+      items: paginatedItems,
+      totalCount: items.length,
+      queryTime: Date.now() - startTime,
+      hasMore: items.length > offset + limit,
+      nextOffset: items.length > offset + limit ? offset + limit : undefined
+    };
   }
 
-  private updateMetrics(responseTime: number, isError: boolean): void {
+  private matchesQuery<T>(item: WalrusDataItem<T>, query: WalrusSearchQuery<T>): boolean {
+    // Schema filter
+    if (query.schema) {
+      const schemas = Array.isArray(query.schema) ? query.schema : [query.schema];
+      if (item.schema && !schemas.includes(item.schema)) {
+        return false;
+      }
+    }
+
+    // Tags filter
+    if (query.tags && query.tags.length > 0) {
+      if (!item.tags || !query.tags.some(tag => item.tags!.includes(tag))) {
+        return false;
+      }
+    }
+
+    // Categories filter
+    if (query.categories && query.categories.length > 0) {
+      if (!item.categories || !query.categories.some(cat => item.categories!.includes(cat))) {
+        return false;
+      }
+    }
+
+    // Date range filter
+    if (query.dateRange) {
+      const itemDate = new Date(item.metadata.created);
+      if (query.dateRange.from && itemDate < query.dateRange.from) {
+        return false;
+      }
+      if (query.dateRange.to && itemDate > query.dateRange.to) {
+        return false;
+      }
+    }
+
+    // Author filter
+    if (query.author) {
+      const authors = Array.isArray(query.author) ? query.author : [query.author];
+      if (!item.metadata.author || !authors.includes(item.metadata.author)) {
+        return false;
+      }
+    }
+
+    // Custom filters
+    if (query.customFilters && !query.customFilters(item)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private async testEndpoint(url: string): Promise<boolean> {
+    try {
+      // Use AbortController for timeout instead of fetch timeout option
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(`${url}/health`, { 
+        method: 'GET',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  private updateMetrics(
+    responseTime: number, 
+    isError: boolean, 
+    operation: 'store' | 'retrieve' | 'query' | 'bulk' | 'stats'
+  ): void {
     this.metrics.requestCount++;
     this.metrics.avgResponseTime = (this.metrics.avgResponseTime + responseTime) / 2;
     
@@ -462,5 +862,51 @@ export class NOCAPClient {
     } else {
       this.metrics.errorRate = (this.metrics.errorRate * (this.metrics.requestCount - 1)) / this.metrics.requestCount;
     }
+
+    // Update operation-specific metrics
+    switch (operation) {
+      case 'store':
+        this.metrics.storageLatency = (this.metrics.storageLatency + responseTime) / 2;
+        break;
+      case 'retrieve':
+        this.metrics.retrievalLatency = (this.metrics.retrievalLatency + responseTime) / 2;
+        break;
+      case 'query':
+        this.metrics.indexQueryTime = (this.metrics.indexQueryTime + responseTime) / 2;
+        break;
+    }
+
+    // Calculate throughput (requests per second)
+    const now = Date.now();
+    if (!this.lastThroughputUpdate) {
+      this.lastThroughputUpdate = now;
+      this.requestsInLastSecond = 1;
+    } else if (now - this.lastThroughputUpdate >= 1000) {
+      this.metrics.throughput = this.requestsInLastSecond / ((now - this.lastThroughputUpdate) / 1000);
+      this.lastThroughputUpdate = now;
+      this.requestsInLastSecond = 1;
+    } else {
+      this.requestsInLastSecond++;
+    }
+  }
+
+  private lastThroughputUpdate?: number;
+  private requestsInLastSecond = 0;
+
+  private updateCacheMetrics(hit: boolean): void {
+    const totalCacheAttempts = (this.metrics.cacheHitRate * this.metrics.requestCount) + 1;
+    const totalHits = hit ? (this.metrics.cacheHitRate * this.metrics.requestCount) + 1 : (this.metrics.cacheHitRate * this.metrics.requestCount);
+    this.metrics.cacheHitRate = totalHits / totalCacheAttempts;
+  }
+
+  private emitEvent<T>(event: WalrusDataEvent<T>): void {
+    const handlers = this.eventHandlers.get('all') || [];
+    handlers.forEach(handler => {
+      try {
+        handler(event);
+      } catch (error) {
+        console.error('Error in event handler:', error);
+      }
+    });
   }
 }

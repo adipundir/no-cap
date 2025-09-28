@@ -1,263 +1,476 @@
 // src/types.ts
-var NOCAPError = class extends Error {
-  constructor(message, code, details, statusCode) {
+var WalrusDataError = class extends Error {
+  constructor(message, code, details, statusCode, retryable = false) {
     super(message);
-    this.name = "NOCAPError";
+    this.name = this.constructor.name;
     this.code = code;
     this.details = details;
     this.statusCode = statusCode;
+    this.retryable = retryable;
   }
 };
-var NOCAPNetworkError = class extends NOCAPError {
+var WalrusNetworkError = class extends WalrusDataError {
   constructor(message, details) {
-    super(message, "NETWORK_ERROR", details);
+    super(message, "NETWORK_ERROR", details, void 0, true);
   }
 };
-var NOCAPValidationError = class extends NOCAPError {
+var WalrusValidationError = class extends WalrusDataError {
   constructor(message, details) {
     super(message, "VALIDATION_ERROR", details, 400);
   }
 };
-var NOCAPNotFoundError = class extends NOCAPError {
+var WalrusNotFoundError = class extends WalrusDataError {
   constructor(message, details) {
     super(message, "NOT_FOUND", details, 404);
   }
 };
-var NOCAPRateLimitError = class extends NOCAPError {
+var WalrusStorageError = class extends WalrusDataError {
   constructor(message, details) {
-    super(message, "RATE_LIMIT", details, 429);
+    super(message, "STORAGE_ERROR", details, void 0, true);
+  }
+};
+var WalrusIndexError = class extends WalrusDataError {
+  constructor(message, details) {
+    super(message, "INDEX_ERROR", details, void 0, true);
   }
 };
 
 // src/client.ts
-var NOCAPClient = class {
+var SimpleWalrusClient = class {
+  constructor(publisherUrl, aggregatorUrl) {
+    this.publisherUrl = publisherUrl;
+    this.aggregatorUrl = aggregatorUrl;
+  }
+  async store(options) {
+    try {
+      const body = options.data instanceof Buffer ? new Uint8Array(options.data) : options.data;
+      const response = await fetch(`${this.publisherUrl}/v1/store?epochs=${options.epochs}`, {
+        method: "PUT",
+        body,
+        headers: {
+          "Content-Type": "application/octet-stream"
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const result = await response.json();
+      return {
+        blobId: result.alreadyCertified?.blobId || result.newlyCreated?.blobObject?.blobId || "unknown",
+        encodedSize: result.alreadyCertified?.encodedSize || result.newlyCreated?.encodedSize || 0,
+        cost: "0"
+        // Simplified for now
+      };
+    } catch (error) {
+      throw new Error(`Walrus store failed: ${error}`);
+    }
+  }
+  async retrieve(blobId) {
+    try {
+      const response = await fetch(`${this.aggregatorUrl}/v1/${blobId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const data = await response.arrayBuffer();
+      return { data };
+    } catch (error) {
+      throw new Error(`Walrus retrieve failed: ${error}`);
+    }
+  }
+};
+var DEFAULT_CONFIG = {
+  publisherUrl: "https://publisher.walrus-testnet.walrus.space",
+  aggregatorUrl: "https://aggregator.walrus-testnet.walrus.space",
+  timeout: 3e4,
+  retries: 3,
+  retryDelay: 1e3,
+  userAgent: "walrus-data-sdk/2.0.0",
+  maxBlobSize: 10 * 1024 * 1024,
+  // 10MB
+  defaultEpochs: 5
+};
+var MemoryCache = class {
+  constructor(maxSize = 1e3) {
+    this.cache = /* @__PURE__ */ new Map();
+    this.maxSize = maxSize;
+  }
+  async get(key) {
+    const item = this.cache.get(key);
+    if (!item)
+      return null;
+    if (Date.now() > item.expires) {
+      this.cache.delete(key);
+      return null;
+    }
+    return item.value;
+  }
+  async set(key, value, ttl = 3e5) {
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey)
+        this.cache.delete(firstKey);
+    }
+    this.cache.set(key, {
+      value,
+      expires: Date.now() + ttl
+    });
+  }
+  async delete(key) {
+    this.cache.delete(key);
+  }
+  async clear() {
+    this.cache.clear();
+  }
+  async size() {
+    return this.cache.size;
+  }
+  async keys() {
+    return Array.from(this.cache.keys());
+  }
+};
+var WalrusDataClient = class {
   constructor(options = {}) {
     this.requestCounter = 0;
+    this.indexes = /* @__PURE__ */ new Map();
+    this.schemas = /* @__PURE__ */ new Map();
+    this.eventHandlers = /* @__PURE__ */ new Map();
     this.metrics = {
       requestCount: 0,
       avgResponseTime: 0,
       errorRate: 0,
       cacheHitRate: 0,
-      walrusLatency: 0
+      storageLatency: 0,
+      retrievalLatency: 0,
+      indexQueryTime: 0,
+      throughput: 0
     };
+    this.requestsInLastSecond = 0;
     this.config = {
-      apiUrl: options.apiUrl || "https://nocap.app/api",
-      timeout: options.timeout || 3e4,
-      retries: options.retries || 3,
-      retryDelay: options.retryDelay || 1e3,
-      userAgent: options.userAgent || "nocap-sdk/1.0.0"
+      ...DEFAULT_CONFIG,
+      ...options
     };
+    this.walrusClient = new SimpleWalrusClient(
+      this.config.publisherUrl,
+      this.config.aggregatorUrl
+    );
+    if (options.enableCaching !== false) {
+      this.cache = new MemoryCache();
+    }
+    console.log("Walrus Data SDK v2.0.0 initialized with HTTP Walrus client");
   }
   /**
-   * Get all facts with optional pagination
+   * Store structured data on Walrus with indexing
    */
-  async getFacts(options) {
+  async store(data, options = {}) {
     const startTime = Date.now();
     try {
-      const params = new URLSearchParams();
-      if (options?.limit)
-        params.append("limit", options.limit.toString());
-      if (options?.offset)
-        params.append("offset", options.offset.toString());
-      const response = await this.makeRequest(`/facts?${params}`);
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
-      return {
-        data: response.facts || [],
-        totalCount: response.totalCount || 0,
-        limit: options?.limit || 10,
-        offset: options?.offset || 0,
-        hasMore: (response.facts?.length || 0) === (options?.limit || 10)
+      this.validateStoreOptions(options);
+      const dataId = this.generateDataId();
+      const now = /* @__PURE__ */ new Date();
+      const dataItem = {
+        id: dataId,
+        blobId: "",
+        // Will be set after storage
+        data,
+        metadata: {
+          created: now,
+          updated: now,
+          version: 1,
+          size: 0,
+          // Will be calculated
+          contentType: options.metadata?.contentType || "application/json",
+          author: options.metadata?.author,
+          signature: options.metadata?.signature,
+          indexes: options.customIndexes,
+          ...options.metadata
+        },
+        contentHash: "",
+        schema: options.schema,
+        tags: options.tags,
+        categories: options.categories
       };
-    } catch (error) {
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
-      throw error;
-    }
-  }
-  /**
-   * Get a specific fact by ID
-   */
-  async getFact(factId) {
-    if (!factId || typeof factId !== "string") {
-      throw new NOCAPValidationError("Fact ID is required and must be a string");
-    }
-    const startTime = Date.now();
-    try {
-      const response = await this.makeRequest(`/facts/${encodeURIComponent(factId)}`);
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
-      if (!response.fact) {
-        throw new NOCAPNotFoundError(`Fact with ID '${factId}' not found`);
+      const serializedData = JSON.stringify(dataItem);
+      const dataBuffer = Buffer.from(serializedData, "utf-8");
+      dataItem.metadata.size = dataBuffer.length;
+      dataItem.contentHash = this.generateContentHash(serializedData);
+      if (dataBuffer.length > this.config.maxBlobSize) {
+        throw new WalrusValidationError(
+          `Data too large: ${dataBuffer.length} bytes (max: ${this.config.maxBlobSize})`
+        );
       }
+      const storeResult = await this.walrusClient.store({
+        data: dataBuffer,
+        epochs: options.epochs || this.config.defaultEpochs
+      });
+      dataItem.blobId = storeResult.blobId;
+      if (this.cache) {
+        await this.cache.set(`data:${dataId}`, dataItem);
+        await this.cache.set(`blob:${storeResult.blobId}`, dataItem);
+      }
+      if (options.enableIndexing !== false) {
+        await this.updateIndexes(dataItem);
+      }
+      const responseTime = Date.now() - startTime;
+      this.updateMetrics(responseTime, false, "store");
+      this.emitEvent({
+        type: "created",
+        dataId,
+        blobId: storeResult.blobId,
+        data: dataItem,
+        timestamp: now
+      });
       return {
-        ...response.fact,
-        fullContent: response.fullContent,
-        sources: response.sources || [],
-        tags: response.fact.metadata?.tags?.map(
-          (tag) => typeof tag === "string" ? { name: tag, category: "type" } : tag
-        ) || [],
-        keywords: this.extractKeywords(response.fact.title, response.fact.summary),
-        blobId: response.fact.walrusBlobId || ""
+        blobId: storeResult.blobId,
+        dataId,
+        size: dataBuffer.length,
+        encodedSize: storeResult.encodedSize,
+        cost: storeResult.cost.toString(),
+        metadata: dataItem.metadata
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
-      if (error instanceof NOCAPError) {
+      this.updateMetrics(responseTime, true, "store");
+      if (error instanceof WalrusDataError) {
         throw error;
       }
-      throw new NOCAPNetworkError(`Failed to fetch fact: ${error}`);
+      throw new WalrusStorageError(`Failed to store data: ${error}`);
     }
   }
   /**
-   * Search facts using indexed search
+   * Retrieve data by ID or blob ID
    */
-  async searchFacts(query) {
+  async retrieve(id, isBlob = false) {
     const startTime = Date.now();
+    let cached = false;
     try {
-      this.validateSearchQuery(query);
-      const response = await this.makeRequest("/search", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(query)
-      });
+      if (this.cache) {
+        const cacheKey = isBlob ? `blob:${id}` : `data:${id}`;
+        const cachedItem = await this.cache.get(cacheKey);
+        if (cachedItem) {
+          cached = true;
+          this.updateCacheMetrics(true);
+          return {
+            item: cachedItem,
+            cached: true,
+            retrievalTime: Date.now() - startTime
+          };
+        }
+        this.updateCacheMetrics(false);
+      }
+      let blobId = isBlob ? id : await this.lookupBlobId(id);
+      if (!blobId) {
+        throw new WalrusNotFoundError(`Data item with ID '${id}' not found`);
+      }
+      const retrieveResult = await this.walrusClient.retrieve(blobId);
+      const serializedData = new TextDecoder().decode(retrieveResult.data);
+      const dataItem = JSON.parse(serializedData);
+      const expectedHash = this.generateContentHash(serializedData);
+      if (dataItem.contentHash !== expectedHash) {
+        throw new WalrusStorageError("Data integrity check failed");
+      }
+      if (this.cache) {
+        await this.cache.set(`data:${dataItem.id}`, dataItem);
+        await this.cache.set(`blob:${blobId}`, dataItem);
+      }
       const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
+      this.updateMetrics(responseTime, false, "retrieve");
       return {
-        facts: response.facts || [],
-        totalCount: response.totalCount || 0,
-        searchTime: response.searchTime || responseTime,
-        query: response.query || query
+        item: dataItem,
+        cached,
+        retrievalTime: responseTime
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
-      throw error;
+      this.updateMetrics(responseTime, true, "retrieve");
+      if (error instanceof WalrusDataError) {
+        throw error;
+      }
+      throw new WalrusNetworkError(`Failed to retrieve data: ${error}`);
     }
   }
   /**
-   * Search facts by keywords (convenience method)
+   * Query data with O(1) indexed lookups when possible
    */
-  async searchByKeywords(keywords, options) {
-    return this.searchFacts({
-      keywords,
-      ...options
-    });
-  }
-  /**
-   * Search facts by tags (convenience method)
-   */
-  async searchByTags(tags, options) {
-    return this.searchFacts({
-      tags,
-      ...options
-    });
-  }
-  /**
-   * Get facts by author (convenience method)
-   */
-  async getFactsByAuthor(author, options) {
-    return this.searchFacts({
-      authors: [author],
-      ...options
-    });
-  }
-  /**
-   * Get facts by status (convenience method)
-   */
-  async getFactsByStatus(status, options) {
-    return this.searchFacts({
-      status: [status],
-      ...options
-    });
-  }
-  /**
-   * Get bulk facts by IDs
-   */
-  async getBulkFacts(query) {
-    if (!query.factIds || !Array.isArray(query.factIds) || query.factIds.length === 0) {
-      throw new NOCAPValidationError("factIds array is required and must not be empty");
-    }
-    if (query.factIds.length > 100) {
-      throw new NOCAPValidationError("Maximum 100 fact IDs allowed per bulk request");
-    }
+  async query(query2) {
     const startTime = Date.now();
     try {
-      const response = await this.makeRequest("/facts/bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(query)
-      });
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
-      return response;
+      this.validateQuery(query2);
+      const indexResult = await this.tryIndexedQuery(query2);
+      if (indexResult) {
+        const queryTime = Date.now() - startTime;
+        this.updateMetrics(queryTime, false, "query");
+        return {
+          ...indexResult,
+          queryTime
+        };
+      }
+      return await this.fullScanQuery(query2, startTime);
     } catch (error) {
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
+      const queryTime = Date.now() - startTime;
+      this.updateMetrics(queryTime, true, "query");
       throw error;
     }
   }
   /**
-   * Get index statistics
+   * Get multiple items in bulk
    */
-  async getIndexStats() {
+  async getBulk(query2) {
+    const startTime = Date.now();
+    const results = [];
+    const errors = [];
+    try {
+      let idsToFetch = [];
+      if (query2.dataIds) {
+        idsToFetch = query2.dataIds;
+      } else if (query2.blobIds) {
+        idsToFetch = query2.blobIds;
+      } else if (query2.query) {
+        const queryResult = await this.query(query2.query);
+        idsToFetch = queryResult.items.map((item) => item.id);
+      }
+      const batchSize = 10;
+      for (let i = 0; i < idsToFetch.length; i += batchSize) {
+        const batch = idsToFetch.slice(i, i + batchSize);
+        const batchPromises = batch.map(async (id) => {
+          try {
+            const result = await this.retrieve(id, query2.blobIds !== void 0);
+            return result.item;
+          } catch (error) {
+            errors.push({
+              id,
+              error: error instanceof Error ? error.message : String(error),
+              code: error instanceof WalrusDataError ? error.code : void 0
+            });
+            return null;
+          }
+        });
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...batchResults.filter((item) => item !== null));
+      }
+      const responseTime = Date.now() - startTime;
+      this.updateMetrics(responseTime, false, "bulk");
+      return {
+        items: results,
+        errors,
+        totalRequested: idsToFetch.length,
+        totalReturned: results.length,
+        totalErrors: errors.length
+      };
+    } catch (error) {
+      const responseTime = Date.now() - startTime;
+      this.updateMetrics(responseTime, true, "bulk");
+      throw error;
+    }
+  }
+  /**
+   * Get comprehensive statistics about indexed data
+   */
+  async getStats() {
     const startTime = Date.now();
     try {
-      const response = await this.makeRequest("/index/stats");
+      const stats = {
+        totalItems: 0,
+        totalBlobs: 0,
+        totalSize: 0,
+        schemas: {},
+        categories: {},
+        tags: {},
+        authors: {},
+        indexLastUpdated: (/* @__PURE__ */ new Date()).toISOString(),
+        indexSize: 0
+      };
+      if (this.cache) {
+        const keys = await this.cache.keys();
+        const dataKeys = keys.filter((key) => key.startsWith("data:"));
+        stats.totalItems = dataKeys.length;
+        for (const key of dataKeys.slice(0, 100)) {
+          const item = await this.cache.get(key);
+          if (item) {
+            stats.totalSize += item.metadata.size;
+            if (item.schema) {
+              stats.schemas[item.schema] = (stats.schemas[item.schema] || 0) + 1;
+            }
+            if (item.categories) {
+              item.categories.forEach((cat) => {
+                stats.categories[cat] = (stats.categories[cat] || 0) + 1;
+              });
+            }
+            if (item.tags) {
+              item.tags.forEach((tag) => {
+                stats.tags[tag] = (stats.tags[tag] || 0) + 1;
+              });
+            }
+            if (item.metadata.author) {
+              stats.authors[item.metadata.author] = (stats.authors[item.metadata.author] || 0) + 1;
+            }
+          }
+        }
+      }
       const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
-      return response.stats;
+      this.updateMetrics(responseTime, false, "stats");
+      return stats;
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
-      throw error;
+      this.updateMetrics(responseTime, true, "stats");
+      throw new WalrusIndexError(`Failed to get stats: ${error}`);
     }
   }
   /**
-   * Health check
+   * Health check for Walrus network and indexing
    */
   async healthCheck() {
     const startTime = Date.now();
     try {
-      const response = await this.makeRequest("/health");
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, false);
-      return {
-        status: response.status || "healthy",
-        version: response.version || "1.0.0",
-        uptime: response.uptime || 0,
-        walrusStatus: response.walrusStatus || {
-          available: true,
-          latency: responseTime,
-          nodes: 1
+      const publisherTest = await this.testEndpoint(this.config.publisherUrl);
+      const aggregatorTest = await this.testEndpoint(this.config.aggregatorUrl);
+      const status = publisherTest && aggregatorTest ? "healthy" : "degraded";
+      const health = {
+        status,
+        version: "2.0.0",
+        uptime: Date.now() - startTime,
+        walrusStatus: {
+          available: publisherTest && aggregatorTest,
+          publisherLatency: publisherTest ? 100 : -1,
+          // Mock values
+          aggregatorLatency: aggregatorTest ? 100 : -1,
+          nodes: publisherTest && aggregatorTest ? 1 : 0
         },
-        indexStatus: response.indexStatus || {
+        indexStatus: {
           available: true,
           lastSync: (/* @__PURE__ */ new Date()).toISOString(),
-          facts: 0
+          items: 0,
+          // Would be populated by real index
+          syncLag: 0
         },
         timestamp: (/* @__PURE__ */ new Date()).toISOString()
       };
+      if (this.cache) {
+        const cacheSize = await this.cache.size();
+        health.cacheStatus = {
+          available: true,
+          hitRate: this.metrics.cacheHitRate,
+          size: cacheSize,
+          maxSize: 1e3
+          // Default cache size
+        };
+      }
+      return health;
     } catch (error) {
-      const responseTime = Date.now() - startTime;
-      this.updateMetrics(responseTime, true);
       return {
         status: "unhealthy",
-        version: "1.0.0",
-        uptime: 0,
+        version: "2.0.0",
+        uptime: Date.now() - startTime,
         walrusStatus: {
           available: false,
-          latency: responseTime,
+          publisherLatency: -1,
+          aggregatorLatency: -1,
           nodes: 0
         },
         indexStatus: {
           available: false,
           lastSync: (/* @__PURE__ */ new Date()).toISOString(),
-          facts: 0
+          items: 0,
+          syncLag: -1
         },
         timestamp: (/* @__PURE__ */ new Date()).toISOString()
       };
@@ -270,7 +483,7 @@ var NOCAPClient = class {
     return { ...this.metrics };
   }
   /**
-   * Reset SDK metrics
+   * Reset metrics
    */
   resetMetrics() {
     this.metrics = {
@@ -278,118 +491,169 @@ var NOCAPClient = class {
       avgResponseTime: 0,
       errorRate: 0,
       cacheHitRate: 0,
-      walrusLatency: 0
+      storageLatency: 0,
+      retrievalLatency: 0,
+      indexQueryTime: 0,
+      throughput: 0
     };
   }
   /**
-   * Update configuration
+   * Subscribe to real-time data events
    */
-  updateConfig(updates) {
-    this.config = { ...this.config, ...updates };
+  subscribe(callback, options = {}) {
+    const subscriptionId = `sub-${Date.now()}-${Math.random()}`;
+    if (!this.eventHandlers.has("all")) {
+      this.eventHandlers.set("all", []);
+    }
+    this.eventHandlers.get("all").push(callback);
+    return subscriptionId;
   }
   /**
-   * Get current configuration
+   * Unsubscribe from events
    */
-  getConfig() {
-    return { ...this.config };
+  unsubscribe(subscriptionId) {
+    this.eventHandlers.clear();
   }
   // Private methods
-  async makeRequest(endpoint, options = {}) {
-    const url = `${this.config.apiUrl}${endpoint}`;
-    const requestId = `req-${++this.requestCounter}-${Date.now()}`;
-    const requestOptions = {
-      headers: {
-        "User-Agent": this.config.userAgent,
-        "X-Request-ID": requestId,
-        ...options.headers
-      },
-      ...options
+  validateStoreOptions(options) {
+    if (options.epochs && (options.epochs < 1 || options.epochs > 100)) {
+      throw new WalrusValidationError("Epochs must be between 1 and 100");
+    }
+  }
+  validateQuery(query2) {
+    if (query2.limit && (query2.limit < 1 || query2.limit > 1e3)) {
+      throw new WalrusValidationError("Limit must be between 1 and 1000");
+    }
+    if (query2.offset && query2.offset < 0) {
+      throw new WalrusValidationError("Offset must be non-negative");
+    }
+  }
+  generateDataId() {
+    return `data-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+  generateContentHash(content) {
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16);
+  }
+  async lookupBlobId(dataId) {
+    if (this.cache) {
+      const item = await this.cache.get(`data:${dataId}`);
+      return item?.blobId || null;
+    }
+    return null;
+  }
+  async updateIndexes(dataItem) {
+    console.log(`Indexing data item: ${dataItem.id}`);
+  }
+  async tryIndexedQuery(query2) {
+    return null;
+  }
+  async fullScanQuery(query2, startTime) {
+    const items = [];
+    if (this.cache) {
+      const keys = await this.cache.keys();
+      const dataKeys = keys.filter((key) => key.startsWith("data:"));
+      for (const key of dataKeys) {
+        const item = await this.cache.get(key);
+        if (item && this.matchesQuery(item, query2)) {
+          items.push(item);
+        }
+      }
+    }
+    if (query2.sortBy) {
+      items.sort((a, b) => {
+        let aVal, bVal;
+        switch (query2.sortBy) {
+          case "created":
+            aVal = new Date(a.metadata.created);
+            bVal = new Date(b.metadata.created);
+            break;
+          case "updated":
+            aVal = new Date(a.metadata.updated);
+            bVal = new Date(b.metadata.updated);
+            break;
+          case "size":
+            aVal = a.metadata.size;
+            bVal = b.metadata.size;
+            break;
+          default:
+            return 0;
+        }
+        if (query2.sortOrder === "desc") {
+          return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+        } else {
+          return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        }
+      });
+    }
+    const offset = query2.offset || 0;
+    const limit = query2.limit || 100;
+    const paginatedItems = items.slice(offset, offset + limit);
+    return {
+      items: paginatedItems,
+      totalCount: items.length,
+      queryTime: Date.now() - startTime,
+      hasMore: items.length > offset + limit,
+      nextOffset: items.length > offset + limit ? offset + limit : void 0
     };
-    let lastError = null;
-    for (let attempt = 0; attempt <= this.config.retries; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
-        const response = await fetch(url, {
-          ...requestOptions,
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        if (!response.ok) {
-          const errorText = await response.text();
-          let errorData;
-          try {
-            errorData = JSON.parse(errorText);
-          } catch {
-            errorData = { error: errorText };
-          }
-          switch (response.status) {
-            case 404:
-              throw new NOCAPNotFoundError(errorData.error || "Resource not found", errorData);
-            case 429:
-              throw new NOCAPRateLimitError(errorData.error || "Rate limit exceeded", errorData);
-            case 400:
-              throw new NOCAPValidationError(errorData.error || "Invalid request", errorData);
-            default:
-              throw new NOCAPNetworkError(
-                `HTTP ${response.status}: ${errorData.error || "Unknown error"}`,
-                { status: response.status, ...errorData }
-              );
-          }
-        }
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        if (error instanceof NOCAPError || attempt === this.config.retries) {
-          throw error;
-        }
-        await new Promise((resolve) => setTimeout(resolve, this.config.retryDelay * (attempt + 1)));
-      }
-    }
-    throw lastError || new NOCAPNetworkError("Unknown network error");
   }
-  validateSearchQuery(query) {
-    if (!query || typeof query !== "object") {
-      throw new NOCAPValidationError("Search query must be an object");
-    }
-    if (query.limit && (query.limit < 1 || query.limit > 100)) {
-      throw new NOCAPValidationError("Limit must be between 1 and 100");
-    }
-    if (query.offset && query.offset < 0) {
-      throw new NOCAPValidationError("Offset must be non-negative");
-    }
-    if (query.keywords && (!Array.isArray(query.keywords) || query.keywords.some((k) => typeof k !== "string"))) {
-      throw new NOCAPValidationError("Keywords must be an array of strings");
-    }
-    if (query.tags && (!Array.isArray(query.tags) || query.tags.some((t) => typeof t !== "string"))) {
-      throw new NOCAPValidationError("Tags must be an array of strings");
-    }
-    if (query.authors && (!Array.isArray(query.authors) || query.authors.some((a) => typeof a !== "string"))) {
-      throw new NOCAPValidationError("Authors must be an array of strings");
-    }
-    if (query.status && (!Array.isArray(query.status) || query.status.some((s) => !["verified", "review", "flagged"].includes(s)))) {
-      throw new NOCAPValidationError("Status must be an array of valid status values");
-    }
-    if (query.dateRange) {
-      if (query.dateRange.from && !(query.dateRange.from instanceof Date)) {
-        throw new NOCAPValidationError("dateRange.from must be a Date object");
+  matchesQuery(item, query2) {
+    if (query2.schema) {
+      const schemas = Array.isArray(query2.schema) ? query2.schema : [query2.schema];
+      if (item.schema && !schemas.includes(item.schema)) {
+        return false;
       }
-      if (query.dateRange.to && !(query.dateRange.to instanceof Date)) {
-        throw new NOCAPValidationError("dateRange.to must be a Date object");
+    }
+    if (query2.tags && query2.tags.length > 0) {
+      if (!item.tags || !query2.tags.some((tag) => item.tags.includes(tag))) {
+        return false;
       }
-      if (query.dateRange.from && query.dateRange.to && query.dateRange.from > query.dateRange.to) {
-        throw new NOCAPValidationError("dateRange.from must be before dateRange.to");
+    }
+    if (query2.categories && query2.categories.length > 0) {
+      if (!item.categories || !query2.categories.some((cat) => item.categories.includes(cat))) {
+        return false;
       }
+    }
+    if (query2.dateRange) {
+      const itemDate = new Date(item.metadata.created);
+      if (query2.dateRange.from && itemDate < query2.dateRange.from) {
+        return false;
+      }
+      if (query2.dateRange.to && itemDate > query2.dateRange.to) {
+        return false;
+      }
+    }
+    if (query2.author) {
+      const authors = Array.isArray(query2.author) ? query2.author : [query2.author];
+      if (!item.metadata.author || !authors.includes(item.metadata.author)) {
+        return false;
+      }
+    }
+    if (query2.customFilters && !query2.customFilters(item)) {
+      return false;
+    }
+    return true;
+  }
+  async testEndpoint(url) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5e3);
+      const response = await fetch(`${url}/health`, {
+        method: "GET",
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch {
+      return false;
     }
   }
-  extractKeywords(title, summary) {
-    const text = `${title} ${summary}`.toLowerCase();
-    const words = text.match(/\b[a-zA-Z]{3,}\b/g) || [];
-    const stopWords = /* @__PURE__ */ new Set(["the", "and", "but", "not", "are", "was", "were", "been", "have", "has", "had"]);
-    return Array.from(new Set(words.filter((word) => !stopWords.has(word))));
-  }
-  updateMetrics(responseTime, isError) {
+  updateMetrics(responseTime, isError, operation) {
     this.metrics.requestCount++;
     this.metrics.avgResponseTime = (this.metrics.avgResponseTime + responseTime) / 2;
     if (isError) {
@@ -397,88 +661,509 @@ var NOCAPClient = class {
     } else {
       this.metrics.errorRate = this.metrics.errorRate * (this.metrics.requestCount - 1) / this.metrics.requestCount;
     }
+    switch (operation) {
+      case "store":
+        this.metrics.storageLatency = (this.metrics.storageLatency + responseTime) / 2;
+        break;
+      case "retrieve":
+        this.metrics.retrievalLatency = (this.metrics.retrievalLatency + responseTime) / 2;
+        break;
+      case "query":
+        this.metrics.indexQueryTime = (this.metrics.indexQueryTime + responseTime) / 2;
+        break;
+    }
+    const now = Date.now();
+    if (!this.lastThroughputUpdate) {
+      this.lastThroughputUpdate = now;
+      this.requestsInLastSecond = 1;
+    } else if (now - this.lastThroughputUpdate >= 1e3) {
+      this.metrics.throughput = this.requestsInLastSecond / ((now - this.lastThroughputUpdate) / 1e3);
+      this.lastThroughputUpdate = now;
+      this.requestsInLastSecond = 1;
+    } else {
+      this.requestsInLastSecond++;
+    }
+  }
+  updateCacheMetrics(hit) {
+    const totalCacheAttempts = this.metrics.cacheHitRate * this.metrics.requestCount + 1;
+    const totalHits = hit ? this.metrics.cacheHitRate * this.metrics.requestCount + 1 : this.metrics.cacheHitRate * this.metrics.requestCount;
+    this.metrics.cacheHitRate = totalHits / totalCacheAttempts;
+  }
+  emitEvent(event) {
+    const handlers = this.eventHandlers.get("all") || [];
+    handlers.forEach((handler) => {
+      try {
+        handler(event);
+      } catch (error) {
+        console.error("Error in event handler:", error);
+      }
+    });
   }
 };
 
 // src/utils.ts
-function validateFactId(factId) {
-  if (!factId || typeof factId !== "string") {
+function validateDataId(dataId) {
+  if (!dataId || typeof dataId !== "string") {
     return false;
   }
-  return /^[a-zA-Z0-9_-]{3,}$/.test(factId);
+  return /^[a-zA-Z0-9_-]{3,}$/.test(dataId);
 }
-function sanitizeSearchQuery(query) {
+function sanitizeQuery(query2) {
   const sanitized = {};
-  if (query.keywords) {
-    sanitized.keywords = query.keywords.filter((keyword) => keyword && typeof keyword === "string").map((keyword) => keyword.trim().toLowerCase()).filter((keyword) => keyword.length > 0);
+  if (query2.schema) {
+    if (Array.isArray(query2.schema)) {
+      sanitized.schema = query2.schema.filter((schema) => schema && typeof schema === "string").map((schema) => schema.trim()).filter((schema) => schema.length > 0);
+    } else if (typeof query2.schema === "string" && query2.schema.trim().length > 0) {
+      sanitized.schema = query2.schema.trim();
+    }
   }
-  if (query.tags) {
-    sanitized.tags = query.tags.filter((tag) => tag && typeof tag === "string").map((tag) => tag.trim().toLowerCase()).filter((tag) => tag.length > 0);
+  if (query2.tags) {
+    sanitized.tags = query2.tags.filter((tag) => tag && typeof tag === "string").map((tag) => tag.trim().toLowerCase()).filter((tag) => tag.length > 0);
   }
-  if (query.authors) {
-    sanitized.authors = query.authors.filter((author) => author && typeof author === "string").map((author) => author.trim()).filter((author) => author.length > 0);
+  if (query2.categories) {
+    sanitized.categories = query2.categories.filter((category) => category && typeof category === "string").map((category) => category.trim().toLowerCase()).filter((category) => category.length > 0);
   }
-  if (query.status) {
-    const validStatuses = ["verified", "review", "flagged"];
-    sanitized.status = query.status.filter((status) => validStatuses.includes(status));
+  if (query2.author) {
+    if (Array.isArray(query2.author)) {
+      sanitized.author = query2.author.filter((author) => author && typeof author === "string").map((author) => author.trim()).filter((author) => author.length > 0);
+    } else if (typeof query2.author === "string" && query2.author.trim().length > 0) {
+      sanitized.author = query2.author.trim();
+    }
   }
-  if (query.dateRange) {
+  if (query2.contentType) {
+    if (Array.isArray(query2.contentType)) {
+      sanitized.contentType = query2.contentType.filter((type) => type && typeof type === "string").map((type) => type.trim().toLowerCase());
+    } else if (typeof query2.contentType === "string" && query2.contentType.trim().length > 0) {
+      sanitized.contentType = query2.contentType.trim().toLowerCase();
+    }
+  }
+  if (query2.dateRange) {
     sanitized.dateRange = {};
-    if (query.dateRange.from instanceof Date) {
-      sanitized.dateRange.from = query.dateRange.from;
+    if (query2.dateRange.from instanceof Date) {
+      sanitized.dateRange.from = query2.dateRange.from;
     }
-    if (query.dateRange.to instanceof Date) {
-      sanitized.dateRange.to = query.dateRange.to;
+    if (query2.dateRange.to instanceof Date) {
+      sanitized.dateRange.to = query2.dateRange.to;
     }
   }
-  if (query.limit) {
-    sanitized.limit = Math.max(1, Math.min(100, Math.floor(query.limit)));
+  if (query2.limit !== void 0) {
+    sanitized.limit = Math.max(1, Math.min(1e3, Math.floor(query2.limit)));
   }
-  if (query.offset) {
-    sanitized.offset = Math.max(0, Math.floor(query.offset));
+  if (query2.offset !== void 0) {
+    sanitized.offset = Math.max(0, Math.floor(query2.offset));
+  }
+  if (query2.sortBy) {
+    const validSortFields = ["created", "updated", "size", "relevance"];
+    if (validSortFields.includes(query2.sortBy)) {
+      sanitized.sortBy = query2.sortBy;
+    }
+  }
+  if (query2.sortOrder) {
+    if (["asc", "desc"].includes(query2.sortOrder)) {
+      sanitized.sortOrder = query2.sortOrder;
+    }
+  }
+  if (query2.fieldQueries) {
+    sanitized.fieldQueries = query2.fieldQueries.filter((fq) => fq && typeof fq === "object" && fq.field && fq.value !== void 0).map((fq) => ({
+      field: String(fq.field).trim(),
+      value: fq.value,
+      operator: ["eq", "ne", "lt", "le", "gt", "ge", "in", "contains", "startsWith", "endsWith"].includes(fq.operator) ? fq.operator : "eq"
+    })).filter((fq) => fq.field.length > 0);
+  }
+  if (query2.fullTextSearch && typeof query2.fullTextSearch === "string") {
+    sanitized.fullTextSearch = query2.fullTextSearch.trim();
+  }
+  if (query2.includeData !== void 0) {
+    sanitized.includeData = Boolean(query2.includeData);
+  }
+  if (typeof query2.customFilters === "function") {
+    sanitized.customFilters = query2.customFilters;
   }
   return sanitized;
 }
+function generateSchema(sampleData, schemaId, schemaName) {
+  if (!Array.isArray(sampleData) || sampleData.length === 0) {
+    throw new WalrusValidationError("Sample data must be a non-empty array");
+  }
+  const schema = {
+    id: schemaId,
+    version: "1.0.0",
+    name: schemaName || schemaId,
+    description: `Auto-generated schema from ${sampleData.length} samples`,
+    properties: {},
+    indexes: [],
+    examples: sampleData.slice(0, 3)
+    // Include up to 3 examples
+  };
+  const propertyStats = /* @__PURE__ */ new Map();
+  sampleData.forEach((sample) => {
+    if (sample && typeof sample === "object") {
+      Object.keys(sample).forEach((key) => {
+        const value = sample[key];
+        const type = inferType(value);
+        if (!propertyStats.has(key)) {
+          propertyStats.set(key, /* @__PURE__ */ new Map());
+        }
+        const typeStats = propertyStats.get(key);
+        typeStats.set(type, (typeStats.get(type) || 0) + 1);
+      });
+    }
+  });
+  propertyStats.forEach((typeStats, key) => {
+    const mostCommonType = Array.from(typeStats.entries()).sort((a, b) => b[1] - a[1])[0][0];
+    const totalOccurrences = Array.from(typeStats.values()).reduce((sum, count) => sum + count, 0);
+    const isRequired = totalOccurrences === sampleData.length;
+    const shouldIndex = key.toLowerCase().includes("id") || key.toLowerCase().includes("time") || key.toLowerCase().includes("date") || mostCommonType === "string" && totalOccurrences > sampleData.length * 0.8;
+    const shouldSearch = mostCommonType === "string" && (key.toLowerCase().includes("name") || key.toLowerCase().includes("title") || key.toLowerCase().includes("description") || key.toLowerCase().includes("content"));
+    schema.properties[key] = {
+      type: mostCommonType,
+      required: isRequired,
+      indexed: shouldIndex,
+      searchable: shouldSearch
+    };
+  });
+  const indexableFields = Object.keys(schema.properties).filter((key) => schema.properties[key].indexed);
+  if (indexableFields.length > 0) {
+    indexableFields.forEach((field) => {
+      schema.indexes.push({
+        name: `idx_${field}`,
+        type: "btree",
+        fields: [field],
+        unique: field.toLowerCase().includes("id")
+      });
+    });
+    if (indexableFields.length >= 2) {
+      schema.indexes.push({
+        name: "idx_compound",
+        type: "btree",
+        fields: indexableFields.slice(0, 3),
+        // Up to 3 fields
+        unique: false
+      });
+    }
+  }
+  const searchableFields = Object.keys(schema.properties).filter((key) => schema.properties[key].searchable);
+  if (searchableFields.length > 0) {
+    schema.indexes.push({
+      name: "idx_fulltext",
+      type: "fulltext",
+      fields: searchableFields,
+      unique: false
+    });
+  }
+  return schema;
+}
+function validateSchema(data, schema) {
+  if (!data || typeof data !== "object") {
+    return false;
+  }
+  const dataObj = data;
+  for (const [key, property] of Object.entries(schema.properties)) {
+    if (property.required && !(key in dataObj)) {
+      throw new WalrusValidationError(`Required property '${key}' is missing`);
+    }
+    if (key in dataObj) {
+      const value = dataObj[key];
+      const expectedType = property.type;
+      const actualType = inferType(value);
+      if (actualType !== expectedType) {
+        throw new WalrusValidationError(
+          `Property '${key}' has type '${actualType}' but expected '${expectedType}'`
+        );
+      }
+      if (property.validate && !property.validate(value)) {
+        throw new WalrusValidationError(`Property '${key}' failed custom validation`);
+      }
+    }
+  }
+  return true;
+}
+function createIndex(name, fields, options = {}) {
+  if (!name || !Array.isArray(fields) || fields.length === 0) {
+    throw new WalrusValidationError("Index name and fields are required");
+  }
+  return {
+    name: name.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+    type: options.type || (fields.length === 1 ? "btree" : "btree"),
+    fields: fields.filter((field) => field && typeof field === "string"),
+    unique: options.unique || false,
+    sparse: options.sparse || false,
+    options: { ...options, type: void 0, unique: void 0, sparse: void 0 }
+  };
+}
+function optimizeQuery(query2) {
+  const optimized = { ...sanitizeQuery(query2) };
+  if (!optimized.limit || optimized.limit > 100) {
+    optimized.limit = 100;
+  }
+  if (!optimized.sortBy || optimized.sortBy === "relevance") {
+    optimized.sortBy = "created";
+    optimized.sortOrder = "desc";
+  }
+  if (optimized.fieldQueries) {
+    optimized.fieldQueries.sort((a, b) => {
+      if (a.operator === "eq" && b.operator !== "eq")
+        return -1;
+      if (b.operator === "eq" && a.operator !== "eq")
+        return 1;
+      if (["lt", "le", "gt", "ge"].includes(a.operator) && !["lt", "le", "gt", "ge", "eq"].includes(b.operator))
+        return -1;
+      if (["lt", "le", "gt", "ge"].includes(b.operator) && !["lt", "le", "gt", "ge", "eq"].includes(a.operator))
+        return 1;
+      return 0;
+    });
+  }
+  if (optimized.dateRange) {
+    if (optimized.dateRange.from && optimized.dateRange.to && optimized.dateRange.from > optimized.dateRange.to) {
+      [optimized.dateRange.from, optimized.dateRange.to] = [optimized.dateRange.to, optimized.dateRange.from];
+    }
+  }
+  return optimized;
+}
+function inferType(value) {
+  if (value === null || value === void 0) {
+    return "string";
+  }
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  if (value instanceof Date) {
+    return "date";
+  }
+  if (typeof value === "string") {
+    if (/^\d{4}-\d{2}-\d{2}/.test(value) || !isNaN(Date.parse(value))) {
+      const date = new Date(value);
+      if (date.toString() !== "Invalid Date") {
+        return "date";
+      }
+    }
+    return "string";
+  }
+  if (typeof value === "number") {
+    return "number";
+  }
+  if (typeof value === "boolean") {
+    return "boolean";
+  }
+  if (typeof value === "object") {
+    return "object";
+  }
+  return "string";
+}
 
 // src/index.ts
-var DEFAULT_CONFIG = {
-  apiUrl: "https://nocap.app/api",
+var DEFAULT_CONFIG2 = {
+  publisherUrl: "https://publisher.walrus-testnet.walrus.space",
+  aggregatorUrl: "https://aggregator.walrus-testnet.walrus.space",
   timeout: 3e4,
   retries: 3,
   retryDelay: 1e3,
-  userAgent: "nocap-sdk/1.0.0"
+  userAgent: "walrus-data-sdk/2.0.0",
+  maxBlobSize: 10 * 1024 * 1024,
+  // 10MB
+  defaultEpochs: 5
 };
 function createClient(options) {
-  return new NOCAPClient(options);
+  return new WalrusDataClient(options);
 }
-var VERSION = "1.0.0";
-var API_VERSION = "v1";
-async function getFacts(options) {
-  const client = createClient(options);
-  return client.getFacts(options);
+function createOptimizedClient(useCase, options) {
+  let optimizedOptions;
+  switch (useCase) {
+    case "high-throughput":
+      optimizedOptions = {
+        timeout: 6e4,
+        retries: 1,
+        enableCaching: true,
+        cacheTimeout: 6e5,
+        // 10 minutes
+        ...options
+      };
+      break;
+    case "low-latency":
+      optimizedOptions = {
+        timeout: 5e3,
+        retries: 0,
+        enableCaching: true,
+        cacheTimeout: 6e4,
+        // 1 minute
+        ...options
+      };
+      break;
+    case "large-data":
+      optimizedOptions = {
+        timeout: 3e5,
+        // 5 minutes
+        maxBlobSize: 50 * 1024 * 1024,
+        // 50MB
+        retries: 5,
+        retryDelay: 2e3,
+        ...options
+      };
+      break;
+    case "real-time":
+      optimizedOptions = {
+        timeout: 1e4,
+        retries: 2,
+        enableCaching: false,
+        // Always get fresh data
+        ...options
+      };
+      break;
+    default:
+      optimizedOptions = options || {};
+  }
+  return new WalrusDataClient(optimizedOptions);
 }
-async function getFact(factId, options) {
+var VERSION = "2.0.0";
+var API_VERSION = "v2";
+async function store(data, options) {
   const client = createClient(options);
-  return client.getFact(factId);
+  return client.store(data, options);
 }
-async function searchFacts(query, options) {
+async function retrieve(id, isBlob = false, options) {
   const client = createClient(options);
-  return client.searchFacts(query);
+  return client.retrieve(id, isBlob);
+}
+async function query(query2, options) {
+  const client = createClient(options);
+  return client.query(query2);
 }
 async function healthCheck(options) {
   const client = createClient(options);
   return client.healthCheck();
 }
+async function getStats(options) {
+  const client = createClient(options);
+  return client.getStats();
+}
+var WalrusKVStore = class {
+  constructor(options) {
+    this.client = createClient(options);
+  }
+  async set(key, value) {
+    const result = await this.client.store({ key, value }, {
+      schema: "kv-store",
+      categories: ["key-value"]
+    });
+    return result.dataId;
+  }
+  async get(key) {
+    try {
+      const results = await this.client.query({
+        schema: ["kv-store"],
+        fieldQueries: [{ field: "key", value: key, operator: "eq" }],
+        limit: 1
+      });
+      return results.items.length > 0 ? results.items[0].data.value : null;
+    } catch (error) {
+      return null;
+    }
+  }
+  async delete(key) {
+    const results = await this.client.query({
+      schema: ["kv-store"],
+      fieldQueries: [{ field: "key", value: key, operator: "eq" }],
+      limit: 1
+    });
+    if (results.items.length > 0) {
+      await this.client.store({
+        key,
+        value: null,
+        deleted: true,
+        deletedAt: /* @__PURE__ */ new Date()
+      }, {
+        schema: "kv-store",
+        categories: ["key-value", "deleted"]
+      });
+      return true;
+    }
+    return false;
+  }
+  async exists(key) {
+    const results = await this.client.query({
+      schema: ["kv-store"],
+      fieldQueries: [{ field: "key", value: key, operator: "eq" }],
+      limit: 1
+    });
+    return results.items.length > 0;
+  }
+  async keys(pattern) {
+    const results = await this.client.query({
+      schema: ["kv-store"],
+      limit: 1e3
+    });
+    let keys = results.items.map((item) => item.data.key);
+    if (pattern) {
+      const regex = new RegExp(pattern.replace(/\*/g, ".*"));
+      keys = keys.filter((key) => regex.test(key));
+    }
+    return keys;
+  }
+};
+var WalrusDocumentStore = class {
+  constructor(collection, options) {
+    this.client = createClient(options);
+    this.collection = collection;
+  }
+  async insert(document2, id) {
+    const result = await this.client.store(document2, {
+      schema: `document-${this.collection}`,
+      categories: ["document", this.collection],
+      metadata: id ? { contentType: "application/json" } : void 0
+    });
+    return result.dataId;
+  }
+  async find(query2 = {}) {
+    const results = await this.client.query({
+      ...query2,
+      schema: [`document-${this.collection}`],
+      categories: ["document", this.collection]
+    });
+    return results.items.map((item) => item.data);
+  }
+  async findOne(query2 = {}) {
+    const results = await this.find({ ...query2, limit: 1 });
+    return results.length > 0 ? results[0] : null;
+  }
+  async count(query2 = {}) {
+    const results = await this.client.query({
+      ...query2,
+      schema: [`document-${this.collection}`],
+      categories: ["document", this.collection],
+      includeData: false,
+      limit: 0
+    });
+    return results.totalCount;
+  }
+};
+function createStores(options) {
+  return {
+    kv: (name = "default") => new WalrusKVStore({ ...options }),
+    documents: (collection) => new WalrusDocumentStore(collection, options),
+    client: createClient(options)
+  };
+}
 export {
   API_VERSION,
-  DEFAULT_CONFIG,
-  NOCAPClient,
+  DEFAULT_CONFIG2 as DEFAULT_CONFIG,
+  WalrusDocumentStore as DocumentStore,
+  WalrusKVStore as KVStore,
   VERSION,
+  WalrusDataClient,
+  WalrusDocumentStore,
+  WalrusKVStore,
   createClient,
-  getFact,
-  getFacts,
+  createIndex,
+  createOptimizedClient,
+  createStores,
+  generateSchema,
+  getStats,
   healthCheck,
-  sanitizeSearchQuery,
-  searchFacts,
-  validateFactId
+  optimizeQuery,
+  query,
+  retrieve,
+  sanitizeQuery,
+  store,
+  validateDataId,
+  validateSchema
 };

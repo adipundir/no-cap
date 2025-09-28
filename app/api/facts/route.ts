@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { getWalrusIndexManager } from '@/lib/walrus-index';
+import { getFallbackFacts } from '@/lib/fallback-facts';
 import type { Fact, FullFact } from '@/types/fact';
 
 /**
@@ -8,11 +9,11 @@ import type { Fact, FullFact } from '@/types/fact';
  * Returns list of facts from Walrus with indexed metadata
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const offset = parseInt(searchParams.get('offset') || '0');
+  const { searchParams } = new URL(request.url);
+  const limit = parseInt(searchParams.get('limit') || '10');
+  const offset = parseInt(searchParams.get('offset') || '0');
 
+  try {
     // Initialize Walrus and get index manager
     const walrus = initializeWalrusFromEnv();
     await walrus.initialize();
@@ -42,12 +43,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           tags: fact.tags.map(tag => tag.name)
         }
       } as Fact)),
-      totalCount 
+      totalCount,
+      isFallback: false
     });
 
   } catch (error) {
-    console.error('Failed to retrieve facts from Walrus:', error);
-    return NextResponse.json({ facts: [], totalCount: 0 }, { status: 200 });
+    console.error('Failed to retrieve facts from Walrus, using fallback:', error);
+    
+    // Return fallback facts when Walrus fails
+    const fallbackData = getFallbackFacts(limit, offset);
+    
+    return NextResponse.json({
+      facts: fallbackData.facts,
+      totalCount: fallbackData.totalCount,
+      isFallback: true,
+      fallbackReason: 'Walrus storage unavailable'
+    }, { status: 200 });
   }
 }
 
