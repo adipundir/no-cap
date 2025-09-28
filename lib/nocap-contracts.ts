@@ -831,19 +831,23 @@ export class NOCAPContractService {
   static async createFact(walrusBlobId: string, stakeAmount: string = '0') {
     try {
       const payload = {
-        to: this.contractAddress,
-        abi: NOCAP_ABI,
-        functionName: 'createFact',
-        args: [walrusBlobId],
-        value: stakeAmount,
+        transaction: [
+          {
+            address: this.contractAddress,
+            abi: NOCAP_ABI,
+            functionName: 'createFact',
+            args: [walrusBlobId],
+            value: stakeAmount,
+          }
+        ]
       }
 
-      const { commandPayload } = await MiniKit.commandsAsync.sendTransaction(payload)
+      const result = await MiniKit.commandsAsync.sendTransaction(payload) as any
       
-      if (commandPayload.status === 'success') {
+      if (result?.commandPayload?.status === 'success') {
         return {
           success: true,
-          transactionId: commandPayload.transaction_id,
+          transactionId: result.commandPayload.transaction_id,
           message: 'Fact created successfully!'
         }
       } else {
@@ -865,19 +869,23 @@ export class NOCAPContractService {
   static async voteOnFact(factId: number, vote: boolean, stakeAmount: string = '0') {
     try {
       const payload = {
-        to: this.contractAddress,
-        abi: NOCAP_ABI,
-        functionName: 'voteOnFact',
-        args: [BigInt(factId), vote],
-        value: stakeAmount,
+        transaction: [
+          {
+            address: this.contractAddress,
+            abi: NOCAP_ABI,
+            functionName: 'voteOnFact',
+            args: [BigInt(factId), vote],
+            value: stakeAmount,
+          }
+        ]
       }
 
-      const { commandPayload } = await MiniKit.commandsAsync.sendTransaction(payload)
+      const result = await MiniKit.commandsAsync.sendTransaction(payload) as any
       
-      if (commandPayload.status === 'success') {
+      if (result?.commandPayload?.status === 'success') {
         return {
           success: true,
-          transactionId: commandPayload.transaction_id,
+          transactionId: result.commandPayload.transaction_id,
           message: `Vote cast successfully! (${vote ? 'CAP' : 'NO CAP'})`
         }
       } else {
@@ -899,19 +907,23 @@ export class NOCAPContractService {
   static async resolveFact(factId: number) {
     try {
       const payload = {
-        to: this.contractAddress,
-        abi: NOCAP_ABI,
-        functionName: 'resolveFact',
-        args: [BigInt(factId)],
-        value: '0',
+        transaction: [
+          {
+            address: this.contractAddress,
+            abi: NOCAP_ABI,
+            functionName: 'resolveFact',
+            args: [BigInt(factId)],
+            value: '0',
+          }
+        ]
       }
 
-      const { commandPayload } = await MiniKit.commandsAsync.sendTransaction(payload)
+      const result = await MiniKit.commandsAsync.sendTransaction(payload) as any
       
-      if (commandPayload.status === 'success') {
+      if (result?.commandPayload?.status === 'success') {
         return {
           success: true,
-          transactionId: commandPayload.transaction_id,
+          transactionId: result.commandPayload.transaction_id,
           message: 'Fact resolved successfully!'
         }
       } else {
@@ -933,19 +945,23 @@ export class NOCAPContractService {
   static async withdrawRewards() {
     try {
       const payload = {
-        to: this.contractAddress,
-        abi: NOCAP_ABI,
-        functionName: 'withdrawRewards',
-        args: [],
-        value: '0',
+        transaction: [
+          {
+            address: this.contractAddress,
+            abi: NOCAP_ABI,
+            functionName: 'withdrawRewards',
+            args: [],
+            value: '0',
+          }
+        ]
       }
 
-      const { commandPayload } = await MiniKit.commandsAsync.sendTransaction(payload)
+      const result = await MiniKit.commandsAsync.sendTransaction(payload) as any
       
-      if (commandPayload.status === 'success') {
+      if (result?.commandPayload?.status === 'success') {
         return {
           success: true,
-          transactionId: commandPayload.transaction_id,
+          transactionId: result.commandPayload.transaction_id,
           message: 'Rewards withdrawn successfully!'
         }
       } else {

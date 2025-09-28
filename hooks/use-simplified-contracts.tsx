@@ -82,14 +82,18 @@ export function useSimplifiedContracts() {
       // 3. Submit fact to contract
       toast('Creating fact on World Chain...')
 
-      const txHash = await NOCAPContractService.createFactWithProof(
+      const result2 = await NOCAPContractService.createFact(
         result.walrusBlobId,
         stakeAmount
       )
 
-      toast.success(`Fact created successfully! TX: ${txHash.slice(0, 10)}...`)
+      if (!result2.success) {
+        throw new Error(result2.error || 'Failed to create fact on contract')
+      }
 
-      return txHash
+      toast.success(`Fact created successfully! TX: ${result2.transactionId?.slice(0, 10)}...`)
+
+      return result2.transactionId || 'success'
     } catch (error: any) {
       console.error('Create fact error:', error)
       if (error.message?.includes('cancelled') || error.message?.includes('denied')) {
@@ -155,15 +159,19 @@ export function useSimplifiedContracts() {
       
       toast(`Casting ${voteText} vote${stakeText}...`)
 
-      const txHash = await NOCAPContractService.voteOnFactWithProof(
-        factId,
+      const voteResult = await NOCAPContractService.voteOnFact(
+        parseInt(factId),
         vote,
         stakeAmount
       )
 
-      toast.success(`Vote cast successfully! TX: ${txHash.slice(0, 10)}...`)
+      if (!voteResult.success) {
+        throw new Error(voteResult.error || 'Failed to cast vote on contract')
+      }
 
-      return txHash
+      toast.success(`Vote cast successfully! TX: ${voteResult.transactionId?.slice(0, 10)}...`)
+
+      return voteResult.transactionId || 'success'
     } catch (error: any) {
       console.error('Vote error:', error)
       if (error.message?.includes('cancelled') || error.message?.includes('denied')) {
@@ -185,11 +193,15 @@ export function useSimplifiedContracts() {
     try {
       toast('Resolving fact...')
 
-      const txHash = await NOCAPContractService.resolveFact(factId)
+      const resolveResult = await NOCAPContractService.resolveFact(parseInt(factId))
 
-      toast.success(`Fact resolved! TX: ${txHash.slice(0, 10)}...`)
+      if (!resolveResult.success) {
+        throw new Error(resolveResult.error || 'Failed to resolve fact on contract')
+      }
 
-      return txHash
+      toast.success(`Fact resolved! TX: ${resolveResult.transactionId?.slice(0, 10)}...`)
+
+      return resolveResult.transactionId || 'success'
     } catch (error: any) {
       console.error('Resolve fact error:', error)
       toast.error(error.message || 'Failed to resolve fact. Please try again.')
@@ -207,14 +219,18 @@ export function useSimplifiedContracts() {
     try {
       toast('Withdrawing rewards...')
 
-      const txHash = await NOCAPContractService.withdrawRewards()
+      const withdrawResult = await NOCAPContractService.withdrawRewards()
+
+      if (!withdrawResult.success) {
+        throw new Error(withdrawResult.error || 'Failed to withdraw rewards')
+      }
 
       // Update withdrawable balance
       await fetchWithdrawableBalance()
 
-      toast.success(`Rewards withdrawn! TX: ${txHash.slice(0, 10)}...`)
+      toast.success(`Rewards withdrawn! TX: ${withdrawResult.transactionId?.slice(0, 10)}...`)
 
-      return txHash
+      return withdrawResult.transactionId || 'success'
     } catch (error: any) {
       console.error('Withdraw rewards error:', error)
       toast.error(error.message || 'Failed to withdraw rewards. Please try again.')

@@ -37,7 +37,7 @@ export class WalrusStorageServiceImpl implements WalrusStorageService {
     this.cache = cache;
     
     // Use real Walrus SDK
-    this.walrusClient = new WalrusClient(TESTNET_WALRUS_PACKAGE_CONFIG);
+    this.walrusClient = new WalrusClient(TESTNET_WALRUS_PACKAGE_CONFIG as any);
     console.log('Using real Walrus SDK for production');
   }
 

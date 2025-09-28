@@ -422,7 +422,7 @@ export class NOCAPWalrusService {
 }
 
 function notifyFallback(message: string, timestamp: Date) {
-  if (isServer()) {
+  if (typeof window === 'undefined') {
     console.warn(`[Walrus fallback] ${message}`, timestamp.toISOString())
     return
   }

@@ -36,7 +36,7 @@ export class RealWalrusService {
   private initialized = false
 
   constructor() {
-    this.walrusClient = new WalrusClient(TESTNET_WALRUS_PACKAGE_CONFIG)
+    this.walrusClient = new WalrusClient(TESTNET_WALRUS_PACKAGE_CONFIG as any)
     this.suiClient = new SuiClient({ url: WALRUS_CONFIG.suiRpcUrl })
   }
 
@@ -58,7 +58,7 @@ export class RealWalrusService {
 
       // Test connection
       const systemState = await this.walrusClient.systemState()
-      console.log('Connected to Walrus network, epoch:', systemState.epoch)
+      console.log('Connected to Walrus network, epoch:', (systemState as any).epoch)
 
       this.initialized = true
     } catch (error) {
@@ -135,7 +135,7 @@ export class RealWalrusService {
 
       // Get blob from Walrus
       const walrusBlob = await this.walrusClient.getBlob({ blobId })
-      const data = await walrusBlob.read()
+      const data = await (walrusBlob as any).read()
 
       console.log('Blob retrieved successfully:', {
         blobId,
@@ -175,7 +175,7 @@ export class RealWalrusService {
    */
   async blobExists(blobId: string): Promise<boolean> {
     try {
-      await this.walrusClient.getBlobMetadata(blobId)
+      await this.walrusClient.getBlobMetadata({ blobId })
       return true
     } catch (error) {
       return false
@@ -186,7 +186,7 @@ export class RealWalrusService {
    * Get blob metadata
    */
   async getBlobMetadata(blobId: string) {
-    return this.walrusClient.getBlobMetadata(blobId)
+    return this.walrusClient.getBlobMetadata({ blobId })
   }
 
   /**
@@ -219,7 +219,7 @@ export class RealWalrusService {
       return {
         status: latency < 2000 ? 'healthy' : 'degraded',
         latency,
-        epoch: systemState.epoch
+        epoch: (systemState as any).epoch
       }
     } catch (error) {
       return {
@@ -239,9 +239,9 @@ export class RealWalrusService {
       const stakingState = await this.walrusClient.stakingState()
       
       return {
-        epoch: systemState.epoch,
-        totalStake: stakingState.totalStake,
-        activeValidators: stakingState.activeValidators?.length || 0,
+        epoch: (systemState as any).epoch,
+        totalStake: (stakingState as any).totalStake,
+        activeValidators: (stakingState as any).activeValidators?.length || 0,
         networkStatus: 'active'
       }
     } catch (error) {
