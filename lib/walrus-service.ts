@@ -58,6 +58,13 @@ export interface WalrusMedia {
   thumbnail?: string
 }
 
+export interface WalrusFactStoreResult {
+  blobId: string
+  source: 'walrus' | 'mock'
+  size: number
+  cost: string
+}
+
 export interface WalrusCommentThread {
   factId: number
   comments: WalrusComment[]
@@ -92,6 +99,23 @@ export class NOCAPWalrusService {
   static initialize() {
     if (!this.walrusHybrid) {
       this.walrusHybrid = getWalrusHybridService()
+      if (typeof window !== 'undefined') {
+        this.walrusHybrid.onFallback((event) => {
+          const message = event.reason === 'health-check-failed'
+            ? 'Walrus network issues detected. Falling back to mock storage.'
+            : event.reason === 'store-failed'
+              ? 'Walrus store failed. Using mock storage.'
+              : 'Walrus retrieval failed. Using mock storage.'
+
+          import('sonner').then(({ toast }) => {
+            toast.warning(message, {
+              description: event.timestamp.toLocaleTimeString()
+            })
+          }).catch((error) => {
+            console.warn('Failed to load toast module for Walrus fallback', error)
+          })
+        })
+      }
     }
     return this.walrusHybrid
   }
@@ -99,7 +123,7 @@ export class NOCAPWalrusService {
   /**
    * Store fact content on Walrus
    */
-  static async storeFact(factContent: WalrusFactContent): Promise<string> {
+  static async storeFact(factContent: WalrusFactContent): Promise<WalrusFactStoreResult> {
     try {
       const walrus = this.initialize()
       
@@ -121,10 +145,16 @@ export class NOCAPWalrusService {
         factId: factContent.factId,
         title: factContent.title,
         size: result.size,
-        cost: result.cost
+        cost: result.cost,
+        source: result.source
       })
       
-      return result.blobId
+      return {
+        blobId: result.blobId,
+        source: result.source,
+        size: result.size,
+        cost: result.cost
+      }
     } catch (error) {
       console.error('Error storing fact on Walrus:', error)
       throw new Error(`Walrus storage failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -187,7 +217,8 @@ export class NOCAPWalrusService {
       }
       
       // Store updated content as new blob
-      return await this.storeFact(newContent)
+      const storeResult = await this.storeFact(newContent)
+      return storeResult.blobId
     } catch (error) {
       console.error('Error updating fact on Walrus:', error)
       throw error
@@ -207,7 +238,7 @@ export class NOCAPWalrusService {
       
       const arrayBuffer = await file.arrayBuffer()
       const blob = new Uint8Array(arrayBuffer)
-      const result = await walrus.writeBlob(blob)
+      const result = await walrus.storeBlob(blob)
       
       if (!result.blobId) {
         throw new Error('Failed to get blob ID for media file')
@@ -245,7 +276,7 @@ export class NOCAPWalrusService {
       const jsonData = JSON.stringify(commentThread, null, 2)
       const blob = new Uint8Array(Buffer.from(jsonData, 'utf-8'))
       
-      const result = await walrus.writeBlob(blob)
+      const result = await walrus.storeBlob(blob)
       
       if (!result.blobId) {
         throw new Error('Failed to store comment thread')
@@ -265,10 +296,8 @@ export class NOCAPWalrusService {
     try {
       const walrus = this.initialize()
       
-      const result = await walrus.getBlob(blobId)
-      if (!result) return null
-      
-      const text = new TextDecoder().decode(result)
+      const result = await walrus.retrieveBlob(blobId)
+      const text = new TextDecoder().decode(result.data)
       return JSON.parse(text) as WalrusCommentThread
     } catch (error) {
       console.error('Error retrieving comment thread from Walrus:', error)
@@ -390,5 +419,18 @@ export class NOCAPWalrusService {
       avgBlobSize: 0
     }
   }
+}
+
+function notifyFallback(message: string, timestamp: Date) {
+  if (isServer()) {
+    console.warn(`[Walrus fallback] ${message}`, timestamp.toISOString())
+    return
+  }
+
+  import('sonner').then(({ toast }) => {
+    toast.warning(message, { description: timestamp.toLocaleTimeString() })
+  }).catch((error) => {
+    console.warn('Failed to load toast module for Walrus fallback', error)
+  })
 }
 

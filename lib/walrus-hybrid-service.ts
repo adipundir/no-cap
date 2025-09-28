@@ -252,7 +252,14 @@ export class WalrusHybridService {
       }
 
       // 2. Store content on Walrus
-      const walrusBlobId = await NOCAPWalrusService.storeFact(factContent)
+      const walrusResult = await NOCAPWalrusService.storeFact(factContent)
+
+      if (walrusResult.source === 'mock') {
+        console.warn('Walrus fallback activated during fact submission', {
+          title,
+          description: description.slice(0, 120)
+        })
+      }
       
       // 3. Generate content hash for integrity verification
       const contentHash = this.generateContentHash(factContent)
@@ -267,7 +274,7 @@ export class WalrusHybridService {
             abi: NOCAP_WALRUS_HYBRID_ABI,
             functionName: 'submitFactReference',
             args: [
-              walrusBlobId,
+              walrusResult.blobId,
               contentHash,
               votingPeriodHours,
               category,
@@ -287,11 +294,11 @@ export class WalrusHybridService {
       
       // 6. Update Walrus content with fact ID
       const updatedContent = { ...factContent, factId }
-      await NOCAPWalrusService.updateFact(walrusBlobId, updatedContent)
+      await NOCAPWalrusService.updateFact(walrusResult.blobId, updatedContent)
 
       return {
         txHash: finalPayload.transaction_id || 'transaction_completed',
-        walrusBlobId,
+        walrusBlobId: walrusResult.blobId,
         factId
       }
     } catch (error) {

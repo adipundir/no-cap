@@ -3,6 +3,11 @@
 
 import { WalrusHttpService } from './walrus-http'
 
+export type WalrusFallbackListener = (event: {
+  reason: 'health-check-failed' | 'store-failed' | 'retrieve-failed'
+  timestamp: Date
+}) => void
+
 interface HybridConfig {
   publisherUrl: string
   aggregatorUrl: string
@@ -25,6 +30,7 @@ export class WalrusHybridService {
   private isWalrusHealthy: boolean = false
   private mockStorage: MockStorage = {}
   private lastHealthCheck: number = 0
+  private fallbackListeners: Set<WalrusFallbackListener> = new Set()
 
   constructor(config?: Partial<HybridConfig>) {
     this.config = {
@@ -46,6 +52,26 @@ export class WalrusHybridService {
     this.checkWalrusHealth()
   }
 
+  onFallback(listener: WalrusFallbackListener): () => void {
+    this.fallbackListeners.add(listener)
+    return () => this.fallbackListeners.delete(listener)
+  }
+
+  private notifyFallback(reason: Parameters<WalrusFallbackListener>[0]['reason']): void {
+    if (this.fallbackListeners.size === 0) {
+      return
+    }
+
+    const event: Parameters<WalrusFallbackListener>[0] = { reason, timestamp: new Date() }
+    this.fallbackListeners.forEach(listener => {
+      try {
+        listener(event)
+      } catch (error) {
+        console.error('Error in Walrus fallback listener', error)
+      }
+    })
+  }
+
   /**
    * Check if Walrus network is healthy
    */
@@ -57,20 +83,25 @@ export class WalrusHybridService {
       return this.isWalrusHealthy
     }
 
+    const assessHealth = (latency: number) => latency < 5000
+
     try {
       const health = await this.walrusHttp.healthCheck()
-      this.isWalrusHealthy = health.publisher.status === 'healthy' && health.aggregator.status === 'healthy'
+      const publisherHealthy = health.publisher.status === 'healthy' && assessHealth(health.publisher.latency)
+      const aggregatorHealthy = health.aggregator.status === 'healthy' && assessHealth(health.aggregator.latency)
+
+      this.isWalrusHealthy = publisherHealthy && aggregatorHealthy
       this.lastHealthCheck = now
 
       if (this.isWalrusHealthy) {
         console.log('✅ Walrus network is healthy - using real storage')
       } else {
-        console.log('⚠️ Walrus network issues detected - using mock storage')
+        console.warn('⚠️ Walrus network issues detected - using mock storage')
       }
 
       return this.isWalrusHealthy
     } catch (error) {
-      console.log('❌ Walrus health check failed - using mock storage')
+      console.warn('❌ Walrus health check failed - using mock storage', error)
       this.isWalrusHealthy = false
       this.lastHealthCheck = now
       return false
@@ -120,8 +151,10 @@ export class WalrusHybridService {
           source: 'walrus' as const
         }
       } catch (error) {
-        console.log('❌ Walrus storage failed, falling back to mock:', error.message)
+        const message = error instanceof Error ? error.message : String(error)
+        console.log('❌ Walrus storage failed, falling back to mock:', message)
         this.isWalrusHealthy = false // Mark as unhealthy for next time
+        this.notifyFallback('store-failed')
       }
     }
 
@@ -184,8 +217,10 @@ export class WalrusHybridService {
           source: 'walrus' as const
         }
       } catch (error) {
-        console.log('❌ Walrus retrieval failed:', error.message)
+        const message = error instanceof Error ? error.message : String(error)
+        console.log('❌ Walrus retrieval failed:', message)
         this.isWalrusHealthy = false
+        this.notifyFallback('retrieve-failed')
       }
     }
 

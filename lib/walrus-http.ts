@@ -198,12 +198,34 @@ export class WalrusHttpService {
     publisher: { status: 'healthy' | 'unhealthy'; latency: number }
     aggregator: { status: 'healthy' | 'unhealthy'; latency: number }
   }> {
-    const checkEndpoint = async (url: string) => {
+    const checkPublisher = async () => {
       const start = Date.now()
       try {
-        const response = await fetch(url, { method: 'HEAD' })
+        const response = await fetch(`${this.config.publisherUrl}/v1/store?epochs=1`, {
+          method: 'OPTIONS'
+        })
+        const healthy = response.ok || response.status === 404
         return {
-          status: response.ok ? 'healthy' as const : 'unhealthy' as const,
+          status: healthy ? 'healthy' as const : 'unhealthy' as const,
+          latency: Date.now() - start
+        }
+      } catch (error) {
+        return {
+          status: 'unhealthy' as const,
+          latency: Date.now() - start
+        }
+      }
+    }
+
+    const checkAggregator = async () => {
+      const start = Date.now()
+      try {
+        const response = await fetch(`${this.config.aggregatorUrl}/v1/status`, {
+          method: 'GET'
+        })
+        const healthy = response.ok || response.status === 404
+        return {
+          status: healthy ? 'healthy' as const : 'unhealthy' as const,
           latency: Date.now() - start
         }
       } catch (error) {
@@ -215,8 +237,8 @@ export class WalrusHttpService {
     }
 
     const [publisher, aggregator] = await Promise.all([
-      checkEndpoint(this.config.publisherUrl),
-      checkEndpoint(this.config.aggregatorUrl)
+      checkPublisher(),
+      checkAggregator()
     ])
 
     return { publisher, aggregator }

@@ -85,7 +85,14 @@ export async function prepareFactForWalrus(
     }
 
     // Store content on Walrus
-    const walrusBlobId = await NOCAPWalrusService.storeFact(factContent)
+    const walrusResult = await NOCAPWalrusService.storeFact(factContent)
+
+    if (walrusResult.source === 'mock') {
+      console.warn('Walrus fallback activated while storing fact', {
+        factId: factContent.factId,
+        title: factContent.title
+      })
+    }
     
     // Generate content hash for on-chain integrity verification
     const contentHash = generateContentHash(factContent)
@@ -104,7 +111,7 @@ export async function prepareFactForWalrus(
 
     return {
       success: true,
-      walrusBlobId,
+      walrusBlobId: walrusResult.blobId,
       contentHash,
       factId: 0 // Will be set after on-chain submission
     }
