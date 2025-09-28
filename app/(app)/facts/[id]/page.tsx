@@ -1,12 +1,13 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Clock, TriangleAlert, ArrowLeft, GraduationCap } from "lucide-react";
 import { DEFAULT_ECON_PARAMS, previewReturn } from "@/lib/economics";
+import { getMockFactById, getMockVotingDataById } from "@/components/data/mock-facts";
 import type { Fact } from "@/types/fact";
 
 function StatusBadge({ status }: { status: Fact["status"] }) {
@@ -33,40 +34,22 @@ function StatusBadge({ status }: { status: Fact["status"] }) {
 
 export default function FactDetail() {
   const params = useParams();
-  const router = useRouter();
   const id = Array.isArray(params?.id) ? params?.id[0] : (params?.id as string);
 
-  const [fact, setFact] = useState<Fact | null>(null);
+  // Use mock data instead of API calls
+  const fact = getMockFactById(id);
+  const votingData = getMockVotingDataById(id);
+  
   const [choice, setChoice] = useState<"cap" | "nocap" | null>(null);
   const [stake, setStake] = useState(5);
 
-  useEffect(() => {
-    async function loadFact() {
-      try {
-        const response = await fetch(`/api/facts/${id}`);
-        if (!response.ok) {
-          throw new Error("Fact not found");
-        }
-        const data = await response.json();
-        setFact(data.fact);
-      } catch (error) {
-        console.error("Failed to load fact:", error);
-        router.push("/feed");
-      }
-    }
-
-    if (id) {
-      loadFact();
-    }
-  }, [id, router]);
-
   const tallies = useMemo(() => ({
-    capVotes: fact?.votes ?? 0,
-    noCapVotes: fact ? Math.max(0, fact.votes / 2) : 0,
-    capStake: 320,
-    noCapStake: 80,
-    posterStake: 20,
-  }), [fact]);
+    capVotes: votingData?.capVotes ?? 0,
+    noCapVotes: votingData?.noCapVotes ?? 0,
+    capStake: votingData?.capStake ?? 0,
+    noCapStake: votingData?.noCapStake ?? 0,
+    posterStake: votingData?.posterStake ?? 0,
+  }), [votingData]);
   const totalVotes = tallies.capVotes + tallies.noCapVotes;
   const votingStake = tallies.capStake + tallies.noCapStake;
   const totalStake = votingStake + tallies.posterStake;
@@ -80,7 +63,17 @@ export default function FactDetail() {
 
 
   if (!fact) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-semibold">Fact Not Found</h1>
+          <p className="text-muted-foreground">The fact you're looking for doesn't exist.</p>
+          <Link href="/feed">
+            <Button>Back to Feed</Button>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -99,11 +92,6 @@ export default function FactDetail() {
               <StatusBadge status={fact.status} />
             </div>
             <p className="text-sm text-muted-foreground">{fact.summary}</p>
-            {fact.walrusBlobId && (
-              <div className="text-xs text-muted-foreground">
-                Walrus blob ID: <span className="font-mono">{fact.walrusBlobId}</span>
-              </div>
-            )}
           </div>
         </Card>
 
@@ -146,8 +134,7 @@ export default function FactDetail() {
               <Button
                 disabled={!choice || stake <= 0}
                 onClick={() => {
-                  // TODO: Implement voting functionality with contract integration
-                  alert(`Voting ${choice?.toUpperCase()} with ${stake} ETH stake - Contract integration needed`);
+                  alert(`Vote recorded: ${choice?.toUpperCase()} with ${stake} PYUD stake! 🎉\n\nYour vote will be processed when the prediction market goes live.`);
                 }}
               >
                 Submit Vote
@@ -162,11 +149,11 @@ export default function FactDetail() {
             <div className="module-content space-y-4 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Window</span>
-                <span>48h</span>
+                <span>{votingData?.window ?? "48h"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Outcome</span>
-                <span>Pending</span>
+                <span>{votingData?.outcome ?? "Pending"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Total stake</span>

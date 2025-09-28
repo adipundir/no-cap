@@ -17,7 +17,6 @@
   display: block;
   /* Larger on mobile, capped on desktop */
   font-size: clamp(12rem, 11vw, 2.75rem);
-  fill: #ffffff;
   user-select: none;
   -moz-user-select: none;
   -webkit-user-select: none;
