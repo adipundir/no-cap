@@ -15,43 +15,258 @@ export const WORLD_CHAIN_CONFIG = {
   blockExplorerUrl: 'https://worldscan.org',
 } as const
 
-// ABI for the clean NOCAP contract (no World ID verification)
+// ABI for the NOCAP contract (actual ABI from successful Remix compilation)
 export const NOCAP_ABI = [
-  // Fact creation
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "AlreadyVoted",
+    "type": "error"
+  },
   {
     "inputs": [
-      {"internalType": "string", "name": "walrusBlobId", "type": "string"}
+      {
+        "internalType": "string",
+        "name": "walrusBlobId",
+        "type": "string"
+      }
     ],
     "name": "createFact",
-    "outputs": [{"internalType": "uint256", "name": "factId", "type": "uint256"}],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-
-  // Voting
-  {
-    "inputs": [
-      {"internalType": "uint256", "name": "factId", "type": "uint256"},
-      {"internalType": "bool", "name": "vote", "type": "bool"}
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      }
     ],
-    "name": "voteOnFact",
-    "outputs": [],
     "stateMutability": "payable",
     "type": "function"
   },
-
-  // Resolution
+  {
+    "inputs": [],
+    "name": "FactAlreadyResolved",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "FactNotFound",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InsufficientStake",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidStakeAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidWalrusBlobId",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "VotingPeriodNotEnded",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "walrusBlobId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "stake",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "FactCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "outcome",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalRewards",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "FactResolved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "capVotes",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "noCapVotes",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "FactTied",
+    "type": "event"
+  },
   {
     "inputs": [
-      {"internalType": "uint256", "name": "factId", "type": "uint256"}
+      {
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      }
     ],
     "name": "resolveFact",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
-
-  // Withdraw rewards
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "StakeWithdrawn",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "voter",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "vote",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "stake",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "VoteCast",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "vote",
+        "type": "bool"
+      }
+    ],
+    "name": "voteOnFact",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
   {
     "inputs": [],
     "name": "withdrawRewards",
@@ -59,90 +274,346 @@ export const NOCAP_ABI = [
     "stateMutability": "nonpayable",
     "type": "function"
   },
-
-  // View functions
-  {
-    "inputs": [{"internalType": "uint256", "name": "factId", "type": "uint256"}],
-    "name": "getFact",
-    "outputs": [
-      {"internalType": "uint256", "name": "id", "type": "uint256"},
-      {"internalType": "address", "name": "creator", "type": "address"},
-      {"internalType": "string", "name": "walrusBlobId", "type": "string"},
-      {"internalType": "uint256", "name": "creatorStake", "type": "uint256"},
-      {"internalType": "uint256", "name": "capVotes", "type": "uint256"},
-      {"internalType": "uint256", "name": "noCapVotes", "type": "uint256"},
-      {"internalType": "uint256", "name": "totalCapStake", "type": "uint256"},
-      {"internalType": "uint256", "name": "totalNoCapStake", "type": "uint256"},
-      {"internalType": "uint256", "name": "createdAt", "type": "uint256"},
-      {"internalType": "uint256", "name": "deadline", "type": "uint256"},
-      {"internalType": "bool", "name": "resolved", "type": "bool"},
-      {"internalType": "bool", "name": "outcome", "type": "bool"},
-      {"internalType": "uint256", "name": "totalRewards", "type": "uint256"}
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
   {
     "inputs": [],
     "name": "factCount",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
-    "name": "getWithdrawableBalance",
-    "outputs": [{"internalType": "uint256", "name": "balance", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{"internalType": "uint256", "name": "factId", "type": "uint256"}],
-    "name": "isVotingEnded",
-    "outputs": [{"internalType": "bool", "name": "ended", "type": "bool"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{"internalType": "uint256", "name": "factId", "type": "uint256"}],
-    "name": "getTimeRemaining",
-    "outputs": [{"internalType": "uint256", "name": "timeRemaining", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getStats",
     "outputs": [
-      {"internalType": "uint256", "name": "totalFacts", "type": "uint256"},
-      {"internalType": "uint256", "name": "totalResolved", "type": "uint256"},
-      {"internalType": "uint256", "name": "totalStaked", "type": "uint256"}
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
-      {"internalType": "uint256", "name": "startIndex", "type": "uint256"},
-      {"internalType": "uint256", "name": "pageSize", "type": "uint256"}
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "facts",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "creator",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "walrusBlobId",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "creatorStake",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "capVotes",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "noCapVotes",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalCapStake",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalNoCapStake",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "createdAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deadline",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "resolved",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "outcome",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalRewards",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "factVotes",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "voter",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "vote",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "stake",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getFact",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "creator",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "walrusBlobId",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "creatorStake",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "capVotes",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "noCapVotes",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalCapStake",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalNoCapStake",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "resolved",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "outcome",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalRewards",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct NOCAPFactChecker.Fact",
+        "name": "fact",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getFactVotes",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "voter",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "vote",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "stake",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct NOCAPFactChecker.Vote[]",
+        "name": "votes",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "startIndex",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "pageSize",
+        "type": "uint256"
+      }
     ],
     "name": "getPaginatedFacts",
     "outputs": [
       {
         "components": [
-          {"internalType": "uint256", "name": "id", "type": "uint256"},
-          {"internalType": "address", "name": "creator", "type": "address"},
-          {"internalType": "string", "name": "walrusBlobId", "type": "string"},
-          {"internalType": "uint256", "name": "creatorStake", "type": "uint256"},
-          {"internalType": "uint256", "name": "capVotes", "type": "uint256"},
-          {"internalType": "uint256", "name": "noCapVotes", "type": "uint256"},
-          {"internalType": "uint256", "name": "totalCapStake", "type": "uint256"},
-          {"internalType": "uint256", "name": "totalNoCapStake", "type": "uint256"},
-          {"internalType": "uint256", "name": "createdAt", "type": "uint256"},
-          {"internalType": "uint256", "name": "deadline", "type": "uint256"},
-          {"internalType": "bool", "name": "resolved", "type": "bool"},
-          {"internalType": "bool", "name": "outcome", "type": "bool"},
-          {"internalType": "uint256", "name": "totalRewards", "type": "uint256"}
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "creator",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "walrusBlobId",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "creatorStake",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "capVotes",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "noCapVotes",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalCapStake",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalNoCapStake",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "deadline",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "resolved",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "outcome",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalRewards",
+            "type": "uint256"
+          }
         ],
         "internalType": "struct NOCAPFactChecker.Fact[]",
         "name": "factsArray",
@@ -153,160 +624,358 @@ export const NOCAP_ABI = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getStats",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "totalFacts",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalResolved",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalStaked",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
-      {"internalType": "uint256", "name": "factId", "type": "uint256"},
-      {"internalType": "address", "name": "user", "type": "address"}
+      {
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getTimeRemaining",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "timeRemaining",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getWithdrawableBalance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "balance",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
     ],
     "name": "hasUserVoted",
-    "outputs": [{"internalType": "bool", "name": "voted", "type": "bool"}],
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "voted",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "hasVoted",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "factId",
+        "type": "uint256"
+      }
+    ],
+    "name": "isVotingEnded",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "ended",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_STATS_FACTS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "VOTING_PERIOD",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "withdrawableBalance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view",
     "type": "function"
   }
-]
+] as const
 
-/**
- * Clean Contract Service for NOCAP
- * Handles fact creation and voting (World ID verification done off-chain)
- */
+// Types based on the actual contract structure
+export interface Fact {
+  id: bigint
+  creator: string
+  walrusBlobId: string
+  creatorStake: bigint
+  capVotes: bigint
+  noCapVotes: bigint
+  totalCapStake: bigint
+  totalNoCapStake: bigint
+  createdAt: bigint
+  deadline: bigint
+  resolved: boolean
+  outcome: boolean
+  totalRewards: bigint
+}
+
+export interface Vote {
+  voter: string
+  vote: boolean
+  stake: bigint
+  timestamp: bigint
+}
+
+// Contract interaction service
 export class NOCAPContractService {
-  
-  /**
-   * Create a new fact with proof of humanhood verification
-   */
-  static async createFactWithProof(
-    walrusBlobId: string,
-    stakeAmount?: string
-  ): Promise<string> {
+  private static contractAddress = WORLD_CHAIN_CONTRACTS.NOCAP
+  private static rpcUrl = WORLD_CHAIN_CONFIG.rpcUrl
+
+  // Create a fact with optional staking
+  static async createFact(walrusBlobId: string, stakeAmount: string = '0') {
     try {
-      // Send transaction to create fact on-chain
-      const stakeValue = stakeAmount && parseFloat(stakeAmount) > 0 ? stakeAmount : '0'
-
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [
-          {
-            address: WORLD_CHAIN_CONTRACTS.NOCAP,
-            abi: NOCAP_ABI,
-            functionName: 'createFact',
-            args: [walrusBlobId],
-            value: stakeValue,
-          },
-        ],
-      })
-
-      if (finalPayload.status === 'error') {
-        throw new Error(finalPayload.error_code || 'Transaction failed')
+      const payload = {
+        to: this.contractAddress,
+        abi: NOCAP_ABI,
+        functionName: 'createFact',
+        args: [walrusBlobId],
+        value: stakeAmount,
       }
 
-      return finalPayload.transaction_id || 'Transaction submitted'
-    } catch (error: any) {
-      console.error('Create fact error:', error)
-      throw new Error(error.message || 'Failed to create fact')
+      const { commandPayload } = await MiniKit.commandsAsync.sendTransaction(payload)
+      
+      if (commandPayload.status === 'success') {
+        return {
+          success: true,
+          transactionId: commandPayload.transaction_id,
+          message: 'Fact created successfully!'
+        }
+      } else {
+        return {
+          success: false,
+          error: 'Transaction failed'
+        }
+      }
+    } catch (error) {
+      console.error('Error creating fact:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      }
     }
   }
 
-  /**
-   * Vote on a fact with proof of humanhood verification
-   */
-  static async voteOnFactWithProof(
-    factId: string,
-    vote: boolean,
-    stakeAmount?: string
-  ): Promise<string> {
+  // Vote on a fact with optional staking
+  static async voteOnFact(factId: number, vote: boolean, stakeAmount: string = '0') {
     try {
-      const stakeValue = stakeAmount && parseFloat(stakeAmount) > 0 ? stakeAmount : '0'
-
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [
-          {
-            address: WORLD_CHAIN_CONTRACTS.NOCAP,
-            abi: NOCAP_ABI,
-            functionName: 'voteOnFact',
-            args: [factId, vote],
-            value: stakeValue,
-          },
-        ],
-      })
-
-      if (finalPayload.status === 'error') {
-        throw new Error(finalPayload.error_code || 'Vote transaction failed')
+      const payload = {
+        to: this.contractAddress,
+        abi: NOCAP_ABI,
+        functionName: 'voteOnFact',
+        args: [BigInt(factId), vote],
+        value: stakeAmount,
       }
 
-      return finalPayload.transaction_id || 'Vote submitted'
-    } catch (error: any) {
-      console.error('Vote error:', error)
-      throw new Error(error.message || 'Failed to vote on fact')
+      const { commandPayload } = await MiniKit.commandsAsync.sendTransaction(payload)
+      
+      if (commandPayload.status === 'success') {
+        return {
+          success: true,
+          transactionId: commandPayload.transaction_id,
+          message: `Vote cast successfully! (${vote ? 'CAP' : 'NO CAP'})`
+        }
+      } else {
+        return {
+          success: false,
+          error: 'Transaction failed'
+        }
+      }
+    } catch (error) {
+      console.error('Error voting on fact:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      }
     }
   }
 
-  /**
-   * Resolve a fact after voting period
-   */
-  static async resolveFact(factId: string): Promise<string> {
+  // Resolve a fact (can be called by anyone after voting period)
+  static async resolveFact(factId: number) {
     try {
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [
-          {
-            address: WORLD_CHAIN_CONTRACTS.NOCAP,
-            abi: NOCAP_ABI,
-            functionName: 'resolveFact',
-            args: [factId],
-          },
-        ],
-      })
-
-      if (finalPayload.status === 'error') {
-        throw new Error(finalPayload.error_code || 'Resolve transaction failed')
+      const payload = {
+        to: this.contractAddress,
+        abi: NOCAP_ABI,
+        functionName: 'resolveFact',
+        args: [BigInt(factId)],
+        value: '0',
       }
 
-      return finalPayload.transaction_id || 'Fact resolved'
-    } catch (error: any) {
-      console.error('Resolve fact error:', error)
-      throw new Error(error.message || 'Failed to resolve fact')
+      const { commandPayload } = await MiniKit.commandsAsync.sendTransaction(payload)
+      
+      if (commandPayload.status === 'success') {
+        return {
+          success: true,
+          transactionId: commandPayload.transaction_id,
+          message: 'Fact resolved successfully!'
+        }
+      } else {
+        return {
+          success: false,
+          error: 'Transaction failed'
+        }
+      }
+    } catch (error) {
+      console.error('Error resolving fact:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      }
     }
   }
 
-  /**
-   * Withdraw accumulated rewards
-   */
-  static async withdrawRewards(): Promise<string> {
+  // Withdraw accumulated rewards
+  static async withdrawRewards() {
     try {
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [
-          {
-            address: WORLD_CHAIN_CONTRACTS.NOCAP,
-            abi: NOCAP_ABI,
-            functionName: 'withdrawRewards',
-            args: [],
-          },
-        ],
-      })
-
-      if (finalPayload.status === 'error') {
-        throw new Error(finalPayload.error_code || 'Withdraw transaction failed')
+      const payload = {
+        to: this.contractAddress,
+        abi: NOCAP_ABI,
+        functionName: 'withdrawRewards',
+        args: [],
+        value: '0',
       }
 
-      return finalPayload.transaction_id || 'Rewards withdrawn'
-    } catch (error: any) {
-      console.error('Withdraw error:', error)
-      throw new Error(error.message || 'Failed to withdraw rewards')
+      const { commandPayload } = await MiniKit.commandsAsync.sendTransaction(payload)
+      
+      if (commandPayload.status === 'success') {
+        return {
+          success: true,
+          transactionId: commandPayload.transaction_id,
+          message: 'Rewards withdrawn successfully!'
+        }
+      } else {
+        return {
+          success: false,
+          error: 'Transaction failed'
+        }
+      }
+    } catch (error) {
+      console.error('Error withdrawing rewards:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      }
     }
   }
 
-  // View functions would be implemented using direct RPC calls
-  // since MiniKit doesn't support view function calls directly
-  
-  /**
-   * Get user's withdrawable balance (placeholder)
-   */
-  static async getWithdrawableBalance(userAddress: string): Promise<string> {
+  // View functions (these would need to be implemented with direct RPC calls)
+  static async getFact(factId: number): Promise<Fact | null> {
     // This would need to be implemented with a read call to the contract
-    // For now, return "0" as placeholder
-    return "0"
+    // For now, return null
+    return null
   }
 
-  /**
-   * Get contract statistics (placeholder)
-   */
+  static async getFactVotes(factId: number): Promise<Vote[]> {
+    // This would need to be implemented with a read call to the contract
+    // For now, return empty array
+    return []
+  }
+
   static async getStats() {
     // This would need to be implemented with a read call to the contract
     // For now, return default values
@@ -315,5 +984,29 @@ export class NOCAPContractService {
       totalResolved: 0,
       totalStaked: "0"
     }
+  }
+
+  static async getWithdrawableBalance(userAddress: string): Promise<string> {
+    // This would need to be implemented with a read call to the contract
+    // For now, return "0"
+    return "0"
+  }
+
+  static async hasUserVoted(factId: number, userAddress: string): Promise<boolean> {
+    // This would need to be implemented with a read call to the contract
+    // For now, return false
+    return false
+  }
+
+  static async isVotingEnded(factId: number): Promise<boolean> {
+    // This would need to be implemented with a read call to the contract
+    // For now, return false
+    return false
+  }
+
+  static async getTimeRemaining(factId: number): Promise<number> {
+    // This would need to be implemented with a read call to the contract
+    // For now, return 0
+    return 0
   }
 }
