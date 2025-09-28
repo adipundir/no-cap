@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { getWalrusIndexManager } from '@/lib/walrus-index';
 import { getFactRecord, upsertFactRecord } from '@/lib/store/fact-store';
+import { WalrusHybridStorageAdapter } from '@/lib/walrus-hybrid';
 import type { Fact } from '@/types/fact';
 
 export async function GET(
@@ -15,7 +16,8 @@ export async function GET(
     const walrus = initializeWalrusFromEnv();
     await walrus.initialize();
     
-    const indexManager = getWalrusIndexManager(walrus.storage);
+    const storageAdapter = new WalrusHybridStorageAdapter(walrus.storage);
+    const indexManager = getWalrusIndexManager(storageAdapter);
     await indexManager.initialize();
 
     // Try to get fact from Walrus index first
@@ -76,7 +78,8 @@ export async function PUT(
     const walrus = initializeWalrusFromEnv();
     await walrus.initialize();
     
-    const indexManager = getWalrusIndexManager(walrus.storage);
+    const storageAdapter = new WalrusHybridStorageAdapter(walrus.storage);
+    const indexManager = getWalrusIndexManager(storageAdapter);
     await indexManager.initialize();
 
     // Update fact using index manager (which updates both Walrus and index)

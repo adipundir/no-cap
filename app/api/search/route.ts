@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { getWalrusIndexManager } from '@/lib/walrus-index';
+import { WalrusHybridStorageAdapter } from '@/lib/walrus-hybrid';
 import type { FactSearchQuery } from '@/lib/walrus-index';
 
 /**
@@ -67,7 +68,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const walrus = initializeWalrusFromEnv();
     await walrus.initialize();
     
-    const indexManager = getWalrusIndexManager(walrus.storage);
+    const storageAdapter = new WalrusHybridStorageAdapter(walrus.storage);
+    const indexManager = getWalrusIndexManager(storageAdapter);
     await indexManager.initialize();
 
     // Perform search
@@ -105,7 +107,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const walrus = initializeWalrusFromEnv();
     await walrus.initialize();
     
-    const indexManager = getWalrusIndexManager(walrus.storage);
+    const storageAdapter = new WalrusHybridStorageAdapter(walrus.storage);
+    const indexManager = getWalrusIndexManager(storageAdapter);
     await indexManager.initialize();
 
     // Perform search

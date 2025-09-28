@@ -420,20 +420,3 @@ export class NOCAPWalrusService {
     }
   }
 }
-
-<<<<<<< HEAD
-function notifyFallback(message: string, timestamp: Date) {
-  if (typeof window === 'undefined') {
-    console.warn(`[Walrus fallback] ${message}`, timestamp.toISOString())
-    return
-  }
-
-  import('sonner').then(({ toast }) => {
-    toast.warning(message, { description: timestamp.toLocaleTimeString() })
-  }).catch((error) => {
-    console.warn('Failed to load toast module for Walrus fallback', error)
-  })
-}
-=======
->>>>>>> 0ea0660cc4587702e6e3ff1dd1f08bbd625a4929
-

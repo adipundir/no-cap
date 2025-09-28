@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { getWalrusIndexManager } from '@/lib/walrus-index';
+import { WalrusHybridStorageAdapter } from '@/lib/walrus-hybrid';
 
 /**
  * GET /api/health
@@ -25,7 +26,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
     // Test index manager
     try {
-      const indexManager = getWalrusIndexManager(walrus.storage);
+      const storageAdapter = new WalrusHybridStorageAdapter(walrus.storage);
+      const indexManager = getWalrusIndexManager(storageAdapter);
       await indexManager.initialize();
       
       const stats = indexManager.getIndexStats();

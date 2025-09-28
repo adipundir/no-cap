@@ -1,6 +1,7 @@
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { upsertFactRecord, listFactRecords } from '@/lib/store/fact-store';
 import { normalizeFullFact, generateFactChecksum } from '@/lib/utils/fact-normalizer';
+import { WalrusHybridStorageAdapter } from '@/lib/walrus-hybrid';
 import type { FullFact, Fact } from '@/types/fact';
 
 import { COMPREHENSIVE_SAMPLE_FACTS } from './comprehensive-facts';
@@ -46,7 +47,8 @@ export async function ensureSeedFacts(): Promise<void> {
 
         const { status, votes, comments, author, updated, walrusBlobId, contentHash, metadata, ...factContent } = sample;
 
-        const stored = await walrus.storage.storeFact({
+        const storageAdapter = new WalrusHybridStorageAdapter(walrus.storage);
+        const stored = await storageAdapter.storeFact({
           ...factContent,
           metadata: {
             author: author,

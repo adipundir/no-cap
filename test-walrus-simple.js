@@ -21,7 +21,7 @@ async function testWalrusEndpoints() {
     // Test 2: Aggregator health check
     console.log('2. Testing aggregator endpoint...');
     const aggregatorStart = Date.now();
-    const aggregatorResponse = await fetch(`${AGGREGATOR_URL}/v1/status`, {
+    const aggregatorResponse = await fetch(`${AGGREGATOR_URL}/status`, {
       method: 'GET'
     });
     const aggregatorLatency = Date.now() - aggregatorStart;

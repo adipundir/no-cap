@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeWalrusFromEnv } from '@/lib/walrus-integration';
 import { getWalrusIndexManager } from '@/lib/walrus-index';
-import type { WalrusBulkQuery, WalrusBulkResult } from '@/sdk/src/types';
+import { WalrusHybridStorageAdapter } from '@/lib/walrus-hybrid';
+
+// Base bulk types (previously from SDK)
+interface WalrusBulkQuery {
+  limit?: number;
+  offset?: number;
+}
+
+interface WalrusBulkResult {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
 
 // NOCAP-specific bulk types
 interface NOCAPBulkQuery extends WalrusBulkQuery {
@@ -44,7 +56,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const walrus = initializeWalrusFromEnv();
     await walrus.initialize();
     
-    const indexManager = getWalrusIndexManager(walrus.storage);
+    const storageAdapter = new WalrusHybridStorageAdapter(walrus.storage);
+    const indexManager = getWalrusIndexManager(storageAdapter);
     await indexManager.initialize();
 
     const facts: any[] = [];

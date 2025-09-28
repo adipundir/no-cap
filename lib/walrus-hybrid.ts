@@ -348,4 +348,144 @@ export function initializeWalrusHybrid(config?: Partial<HybridConfig>): WalrusHy
   return walrusHybridService
 }
 
+/**
+ * Adapter to make WalrusHybridService compatible with WalrusStorageService interface
+ */
+import type { WalrusStorageService, FactContent, FactContentBlob, WalrusBlobMetadata, WalrusStoreResponse, WalrusRetrieveResponse, ContextComment, ContextCommentBlob, StoreOptions } from '@/types/walrus'
+
+export class WalrusHybridStorageAdapter implements WalrusStorageService {
+  constructor(private hybridService: WalrusHybridService) {}
+
+  // Core blob operations
+  async storeBlob(data: Buffer | Uint8Array | string, options?: StoreOptions): Promise<WalrusStoreResponse> {
+    const result = await this.hybridService.storeBlob(data)
+    return {
+      blobId: result.blobId,
+      availabilityCertificate: '', // Not applicable for hybrid service
+      metadata: {
+        blobId: result.blobId,
+        size: result.size,
+        mimeType: options?.mimeType,
+        createdAt: new Date()
+      },
+      transactionId: undefined
+    }
+  }
+
+  async retrieveBlob(blobId: string): Promise<WalrusRetrieveResponse> {
+    const result = await this.hybridService.retrieveBlob(blobId)
+    return {
+      data: Buffer.from(result.data),
+      metadata: {
+        blobId,
+        size: result.size,
+        createdAt: new Date()
+      }
+    }
+  }
+
+  async deleteBlob(blobId: string): Promise<boolean> {
+    // Mock implementation since hybrid service doesn't support deletion
+    return Promise.resolve(false)
+  }
+
+  async getBlobMetadata(blobId: string): Promise<WalrusBlobMetadata> {
+    const exists = await this.hybridService.blobExists(blobId)
+    if (!exists) throw new Error('Blob not found')
+    
+    return {
+      blobId,
+      size: 0, // Would need to retrieve to get actual size
+      createdAt: new Date()
+    }
+  }
+
+  // Fact-specific operations
+  async storeFact(fact: FactContent): Promise<FactContentBlob> {
+    const result = await this.hybridService.storeJSON(fact)
+    return {
+      factId: fact.id,
+      content: fact,
+      walrusMetadata: {
+        blobId: result.blobId,
+        size: result.size,
+        createdAt: new Date()
+      }
+    }
+  }
+
+  async retrieveFact(blobId: string): Promise<FactContentBlob> {
+    const factContent = await this.hybridService.retrieveJSON<FactContent>(blobId)
+    return {
+      factId: factContent.id,
+      content: factContent,
+      walrusMetadata: {
+        blobId,
+        size: 0, // Would need additional call to get size
+        createdAt: new Date()
+      }
+    }
+  }
+
+  async updateFact(factId: string, updates: Partial<FactContent>): Promise<FactContentBlob> {
+    // This is a simplified implementation - in reality we'd need to find the existing blob first
+    const updatedFact: FactContent = {
+      id: factId,
+      title: updates.title || '',
+      summary: updates.summary || '',
+      fullContent: updates.fullContent,
+      sources: updates.sources,
+      metadata: {
+        author: updates.metadata?.author || '',
+        created: updates.metadata?.created || new Date(),
+        updated: new Date(),
+        version: (updates.metadata?.version || 0) + 1
+      }
+    }
+    return this.storeFact(updatedFact)
+  }
+
+  // Comment operations - simplified mock implementations
+  async storeComment(comment: ContextComment): Promise<ContextCommentBlob> {
+    const result = await this.hybridService.storeJSON(comment)
+    return {
+      commentId: comment.id,
+      factId: comment.factId,
+      comment,
+      walrusMetadata: {
+        blobId: result.blobId,
+        size: result.size,
+        createdAt: new Date()
+      }
+    }
+  }
+
+  async retrieveComment(commentId: string): Promise<ContextCommentBlob> {
+    const comment = await this.hybridService.retrieveJSON<ContextComment>(commentId)
+    return {
+      commentId: comment.id,
+      factId: comment.factId,
+      comment,
+      walrusMetadata: {
+        blobId: commentId,
+        size: 0,
+        createdAt: new Date()
+      }
+    }
+  }
+
+  async retrieveFactComments(factId: string): Promise<ContextCommentBlob[]> {
+    // Mock implementation - would need proper indexing
+    return []
+  }
+
+  async storeMultipleComments(comments: ContextComment[]): Promise<ContextCommentBlob[]> {
+    return Promise.all(comments.map(comment => this.storeComment(comment)))
+  }
+
+  async retrieveMultipleFacts(blobIds: string[]): Promise<FactContentBlob[]> {
+    return Promise.all(blobIds.map(blobId => this.retrieveFact(blobId)))
+  }
+}
+
 export default WalrusHybridService

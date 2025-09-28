@@ -66,11 +66,7 @@ export class WalrusHttpService {
         headers: {
           'Content-Type': 'application/octet-stream',
         },
-<<<<<<< HEAD
-        body: blob.buffer as ArrayBuffer,
-=======
-        body: blob,
->>>>>>> 0ea0660cc4587702e6e3ff1dd1f08bbd625a4929
+        body: blob as BodyInit,
       })
 
       if (!response.ok) {
@@ -224,10 +220,10 @@ export class WalrusHttpService {
     const checkAggregator = async () => {
       const start = Date.now()
       try {
-        const response = await fetch(`${this.config.aggregatorUrl}/v1/status`, {
+        const response = await fetch(`${this.config.aggregatorUrl}/status`, {
           method: 'GET'
         })
-        const healthy = response.ok || response.status === 404
+        const healthy = response.ok
         return {
           status: healthy ? 'healthy' as const : 'unhealthy' as const,
           latency: Date.now() - start
