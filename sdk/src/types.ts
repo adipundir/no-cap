@@ -1,319 +1,362 @@
 /**
- * NOCAP SDK Type Definitions
+ * Walrus Data SDK Type Definitions
  * 
- * TypeScript interfaces and types for the NOCAP Walrus SDK
+ * Generic TypeScript interfaces and types for querying structured data stored on Walrus
  */
 
+// Walrus SDK integration
+import type { WalrusClient } from '@mysten/walrus';
+
 // Core Configuration Types
-export interface NOCAPConfig {
-  apiUrl: string;
+export interface WalrusDataConfig {
+  publisherUrl: string;
+  aggregatorUrl: string;
   timeout: number;
   retries: number;
   retryDelay: number;
   userAgent: string;
+  maxBlobSize: number;
+  defaultEpochs: number;
 }
 
-export interface NOCAPClientOptions {
-  apiUrl?: string;
+export interface WalrusDataClientOptions {
+  publisherUrl?: string;
+  aggregatorUrl?: string;
   timeout?: number;
   retries?: number;
   retryDelay?: number;
   userAgent?: string;
-  apiKey?: string; // For future authentication
+  maxBlobSize?: number;
+  defaultEpochs?: number;
+  indexUrl?: string; // Optional external index service
+  enableCaching?: boolean;
+  cacheTimeout?: number;
 }
 
-// Fact Status Types
-export type NOCAPFactStatus = 'verified' | 'review' | 'flagged';
-
-// Tag Types
-export interface NOCAPTag {
-  name: string;
-  category: 'topic' | 'region' | 'type' | 'methodology' | 'urgency';
-}
-
-// Source Types
-export interface NOCAPSource {
-  url: string;
-  title?: string;
-  description?: string;
-  accessedAt?: string;
-  archived?: boolean;
-  archiveUrl?: string;
-  credibilityScore?: number;
-}
-
-// Comment Types
-export interface NOCAPComment {
+// Generic Data Types
+export interface WalrusDataItem<T = any> {
   id: string;
-  author: string;
-  content: string;
-  timestamp: string;
-  parentId?: string;
-  votes: {
-    up: number;
-    down: number;
-  };
-  edited?: boolean;
-  editedAt?: string;
-}
-
-// Core Fact Types
-export interface NOCAPFact {
-  id: string;
-  title: string;
-  summary: string;
-  status: NOCAPFactStatus;
-  votes: number;
-  comments: number;
-  author: string;
-  updated: string;
-  walrusBlobId?: string;
-  contentHash?: string;
-  metadata?: {
-    created: Date;
-    lastModified: Date;
-    version: number;
-    contentType: 'text/plain' | 'text/markdown' | 'text/html';
-    tags?: string[];
-  };
-}
-
-export interface NOCAPFactDetails extends NOCAPFact {
-  fullContent?: string;
-  sources?: string[] | NOCAPSource[];
-  tags: NOCAPTag[];
-  keywords: string[];
   blobId: string;
+  data: T;
+  metadata: WalrusDataMetadata;
+  contentHash: string;
+  schema?: string; // Optional schema identifier
+  tags?: string[];
+  categories?: string[];
 }
 
-// Search and Query Types
-export interface NOCAPSearchQuery {
-  keywords?: string[];
+export interface WalrusDataMetadata {
+  created: Date;
+  updated: Date;
+  version: number;
+  size: number;
+  contentType: string;
+  author?: string;
+  signature?: string;
+  indexes?: Record<string, any>; // For O(1) lookups
+}
+
+// Query and Search Types
+export interface WalrusQueryOptions {
+  schema?: string | string[];
   tags?: string[];
-  authors?: string[];
-  status?: NOCAPFactStatus[];
+  categories?: string[];
+  contentType?: string | string[];
   dateRange?: {
     from?: Date;
     to?: Date;
   };
+  author?: string | string[];
   limit?: number;
   offset?: number;
+  sortBy?: 'created' | 'updated' | 'size' | 'relevance';
+  sortOrder?: 'asc' | 'desc';
+  includeData?: boolean; // Whether to fetch full data or just metadata
 }
 
-export interface NOCAPSearchResults {
-  facts: NOCAPFactDetails[];
+export interface WalrusSearchQuery<T = any> extends WalrusQueryOptions {
+  fullTextSearch?: string;
+  fieldQueries?: Array<{
+    field: string;
+    value: any;
+    operator: 'eq' | 'ne' | 'lt' | 'le' | 'gt' | 'ge' | 'in' | 'contains' | 'startsWith' | 'endsWith';
+  }>;
+  customFilters?: (item: WalrusDataItem<T>) => boolean;
+}
+
+export interface WalrusQueryResults<T = any> {
+  items: WalrusDataItem<T>[];
   totalCount: number;
-  searchTime: number;
-  query: NOCAPSearchQuery;
+  queryTime: number;
+  hasMore: boolean;
+  nextOffset?: number;
+  aggregations?: Record<string, any>;
 }
 
 // Pagination Types
-export interface NOCAPPaginationOptions {
+export interface WalrusPaginationOptions {
   limit?: number;
   offset?: number;
+  cursor?: string; // For cursor-based pagination
 }
 
-export interface NOCAPPaginatedResponse<T> {
+export interface WalrusPaginatedResponse<T> {
   data: T[];
   totalCount: number;
   limit: number;
   offset: number;
   hasMore: boolean;
+  nextCursor?: string;
+}
+
+// Storage Operations
+export interface WalrusStoreOptions {
+  epochs?: number;
+  metadata?: Partial<WalrusDataMetadata>;
+  tags?: string[];
+  categories?: string[];
+  schema?: string;
+  enableIndexing?: boolean;
+  customIndexes?: Record<string, any>;
+}
+
+export interface WalrusStoreResult {
+  blobId: string;
+  dataId: string;
+  size: number;
+  encodedSize: number;
+  cost: string;
+  metadata: WalrusDataMetadata;
+}
+
+export interface WalrusRetrieveResult<T = any> {
+  item: WalrusDataItem<T>;
+  cached: boolean;
+  retrievalTime: number;
+}
+
+// Bulk Operations Types
+export interface WalrusBulkQuery {
+  dataIds?: string[];
+  blobIds?: string[];
+  query?: WalrusSearchQuery;
+  includeData?: boolean;
+  includeMetadata?: boolean;
+}
+
+export interface WalrusBulkResult<T = any> {
+  items: WalrusDataItem<T>[];
+  errors: Array<{
+    id: string;
+    error: string;
+    code?: string;
+  }>;
+  totalRequested: number;
+  totalReturned: number;
+  totalErrors: number;
 }
 
 // Index and Statistics Types
-export interface NOCAPIndexStats {
-  totalFacts: number;
-  totalKeywords: number;
-  totalTags: number;
-  totalAuthors: number;
+export interface WalrusIndexStats {
+  totalItems: number;
+  totalBlobs: number;
+  totalSize: number;
+  schemas: Record<string, number>;
+  categories: Record<string, number>;
+  tags: Record<string, number>;
+  authors: Record<string, number>;
+  indexLastUpdated: string;
   indexSize: number;
-  lastUpdated?: string;
 }
 
 // Health Check Types
-export interface NOCAPHealthCheck {
+export interface WalrusHealthCheck {
   status: 'healthy' | 'degraded' | 'unhealthy';
   version: string;
   uptime: number;
   walrusStatus: {
     available: boolean;
-    latency: number;
+    publisherLatency: number;
+    aggregatorLatency: number;
     nodes: number;
   };
   indexStatus: {
     available: boolean;
     lastSync: string;
-    facts: number;
+    items: number;
+    syncLag: number; // in milliseconds
+  };
+  cacheStatus?: {
+    available: boolean;
+    hitRate: number;
+    size: number;
+    maxSize: number;
   };
   timestamp: string;
 }
 
 // Error Types
-export class NOCAPError extends Error {
+export abstract class WalrusDataError extends Error {
   public readonly code: string;
   public readonly details?: any;
   public readonly statusCode?: number;
+  public readonly retryable?: boolean;
 
-  constructor(message: string, code: string, details?: any, statusCode?: number) {
+  constructor(message: string, code: string, details?: any, statusCode?: number, retryable = false) {
     super(message);
-    this.name = 'NOCAPError';
+    this.name = this.constructor.name;
     this.code = code;
     this.details = details;
     this.statusCode = statusCode;
+    this.retryable = retryable;
   }
 }
 
-export class NOCAPNetworkError extends NOCAPError {
+export class WalrusNetworkError extends WalrusDataError {
   constructor(message: string, details?: any) {
-    super(message, 'NETWORK_ERROR', details);
+    super(message, 'NETWORK_ERROR', details, undefined, true);
   }
 }
 
-export class NOCAPValidationError extends NOCAPError {
+export class WalrusValidationError extends WalrusDataError {
   constructor(message: string, details?: any) {
     super(message, 'VALIDATION_ERROR', details, 400);
   }
 }
 
-export class NOCAPNotFoundError extends NOCAPError {
+export class WalrusNotFoundError extends WalrusDataError {
   constructor(message: string, details?: any) {
     super(message, 'NOT_FOUND', details, 404);
   }
 }
 
-export class NOCAPRateLimitError extends NOCAPError {
+export class WalrusStorageError extends WalrusDataError {
   constructor(message: string, details?: any) {
-    super(message, 'RATE_LIMIT', details, 429);
+    super(message, 'STORAGE_ERROR', details, undefined, true);
   }
 }
 
-// Response wrapper types
-export interface NOCAPResponse<T> {
-  data: T;
-  success: boolean;
-  timestamp: string;
-  requestId?: string;
+export class WalrusIndexError extends WalrusDataError {
+  constructor(message: string, details?: any) {
+    super(message, 'INDEX_ERROR', details, undefined, true);
+  }
 }
 
-export interface NOCAPErrorResponse {
-  error: string;
-  code: string;
-  details?: any;
-  timestamp: string;
-  requestId?: string;
-}
-
-// Filtering and Sorting Types
-export interface NOCAPFilterOptions {
-  status?: NOCAPFactStatus[];
-  tags?: string[];
-  authors?: string[];
-  dateRange?: {
-    from?: Date;
-    to?: Date;
-  };
-  hasFullContent?: boolean;
-  hasSources?: boolean;
-  minVotes?: number;
-  maxVotes?: number;
-}
-
-export interface NOCAPSortOptions {
-  field: 'created' | 'updated' | 'votes' | 'comments' | 'relevance';
-  direction: 'asc' | 'desc';
-}
-
-// Analytics Types (for future use)
-export interface NOCAPAnalytics {
-  factTrends: {
-    period: string;
-    totalFacts: number;
-    verifiedFacts: number;
-    flaggedFacts: number;
-    avgVotes: number;
-  }[];
-  topTags: {
-    name: string;
-    count: number;
-    percentage: number;
-  }[];
-  topAuthors: {
-    author: string;
-    factCount: number;
-    avgVotes: number;
-  }[];
-}
-
-// Bulk Operations Types
-export interface NOCAPBulkQuery {
-  factIds: string[];
-  includeContent?: boolean;
-  includeSources?: boolean;
-  includeComments?: boolean;
-}
-
-export interface NOCAPBulkResponse {
-  facts: NOCAPFactDetails[];
-  errors: {
-    factId: string;
-    error: string;
-  }[];
-  totalRequested: number;
-  totalReturned: number;
-}
-
-// Subscription Types (for real-time updates)
-export interface NOCAPSubscriptionOptions {
-  tags?: string[];
-  authors?: string[];
-  status?: NOCAPFactStatus[];
-  includeUpdates?: boolean;
-  includeNew?: boolean;
-}
-
-export type NOCAPSubscriptionCallback = (fact: NOCAPFactDetails, type: 'new' | 'updated' | 'status_changed') => void;
-
-// Export Options Types
-export interface NOCAPExportOptions {
-  format: 'json' | 'csv' | 'xml';
-  query?: NOCAPSearchQuery;
-  includeContent?: boolean;
-  includeSources?: boolean;
-  includeMetadata?: boolean;
-  filename?: string;
-}
-
-// Rate Limiting Types
-export interface NOCAPRateLimit {
-  limit: number;
-  remaining: number;
-  reset: Date;
-  retryAfter?: number;
+export class WalrusRateLimitError extends WalrusDataError {
+  constructor(message: string, details?: any) {
+    super(message, 'RATE_LIMIT', details, 429, true);
+  }
 }
 
 // Cache Types
-export interface NOCAPCacheOptions {
+export interface WalrusCache {
+  get<T>(key: string): Promise<T | null>;
+  set<T>(key: string, value: T, ttl?: number): Promise<void>;
+  delete(key: string): Promise<void>;
+  clear(): Promise<void>;
+  size(): Promise<number>;
+  keys(): Promise<string[]>;
+}
+
+export interface WalrusCacheOptions {
   ttl?: number; // Time to live in milliseconds
+  maxSize?: number; // Maximum cache entries
   staleWhileRevalidate?: boolean;
-  cacheKey?: string;
+  compress?: boolean;
+}
+
+// Index Types for O(1) Lookups
+export interface WalrusIndex {
+  name: string;
+  type: 'btree' | 'hash' | 'fulltext' | 'geo' | 'custom';
+  fields: string[];
+  unique?: boolean;
+  sparse?: boolean;
+  options?: Record<string, any>;
+}
+
+export interface WalrusIndexQuery {
+  index: string;
+  query: any;
+  limit?: number;
+  offset?: number;
+}
+
+export interface WalrusIndexResult<T = any> {
+  items: WalrusDataItem<T>[];
+  totalCount: number;
+  indexUsed: string;
+  queryTime: number;
 }
 
 // Monitoring Types
-export interface NOCAPMetrics {
+export interface WalrusMetrics {
   requestCount: number;
   avgResponseTime: number;
   errorRate: number;
   cacheHitRate: number;
-  walrusLatency: number;
+  storageLatency: number;
+  retrievalLatency: number;
+  indexQueryTime: number;
+  throughput: number; // requests per second
 }
 
-// Feature Flags Types (for SDK configuration)
-export interface NOCAPFeatureFlags {
-  enableCache?: boolean;
-  enableRetries?: boolean;
-  enableAnalytics?: boolean;
-  enableRealTimeUpdates?: boolean;
-  enableBulkOperations?: boolean;
-  maxConcurrentRequests?: number;
+// Event Types for real-time updates
+export interface WalrusDataEvent<T = any> {
+  type: 'created' | 'updated' | 'deleted';
+  dataId: string;
+  blobId?: string;
+  data?: WalrusDataItem<T>;
+  timestamp: Date;
+  metadata?: Record<string, any>;
+}
+
+export type WalrusEventCallback<T = any> = (event: WalrusDataEvent<T>) => void;
+
+export interface WalrusSubscriptionOptions {
+  schemas?: string[];
+  tags?: string[];
+  categories?: string[];
+  authors?: string[];
+  eventTypes?: Array<'created' | 'updated' | 'deleted'>;
+}
+
+// Schema Types for structured data validation
+export interface WalrusDataSchema {
+  id: string;
+  version: string;
+  name: string;
+  description?: string;
+  properties: Record<string, {
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date';
+    required?: boolean;
+    indexed?: boolean;
+    searchable?: boolean;
+    validate?: (value: any) => boolean;
+  }>;
+  indexes?: WalrusIndex[];
+  examples?: any[];
+}
+
+// Export additional utility types
+export type WalrusDataId = string;
+export type WalrusBlobId = string;
+export type WalrusContentHash = string;
+
+// Client response wrapper
+export interface WalrusResponse<T> {
+  data: T;
+  success: boolean;
+  timestamp: string;
+  requestId: string;
+  cached?: boolean;
+  metadata?: Record<string, any>;
+}
+
+// Rate limiting
+export interface WalrusRateLimit {
+  limit: number;
+  remaining: number;
+  reset: Date;
+  retryAfter?: number;
 }

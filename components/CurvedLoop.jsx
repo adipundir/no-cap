@@ -9,7 +9,9 @@ const CurvedLoop = ({
   className,
   curveAmount = 400,
   direction = 'left',
-  interactive = true
+  interactive = true,
+  topPadding = 0,
+  bottomPadding = 0,
 }) => {
   const text = useMemo(() => {
     const hasTrailing = /\s|\u00A0$/.test(marqueeText);
@@ -109,7 +111,12 @@ const CurvedLoop = ({
   return (
     <div
       className="curved-loop-jacket"
-      style={{ visibility: ready ? 'visible' : 'hidden', cursor: cursorStyle }}
+      style={{
+        visibility: ready ? 'visible' : 'hidden',
+        cursor: cursorStyle,
+        paddingTop: topPadding,
+        paddingBottom: bottomPadding,
+      }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}

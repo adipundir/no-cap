@@ -1,0 +1,78 @@
+{
+  "facts": [
+    {
+      "id": 1,
+      "title": "Ethereum's Proof of Stake reduces energy consumption by 99.95%",
+      "summary": "The Ethereum merge to Proof of Stake dramatically reduced the network's energy consumption compared to Proof of Work mining.",
+      "author": "crypto-researcher",
+      "status": "verified",
+      "votes": 1243,
+      "comments": 89,
+      "updated": "2h ago",
+      "sources": [
+        {
+          "url": "https://ethereum.org/en/energy-consumption/",
+          "title": "Ethereum Energy Consumption",
+          "accessedAt": "2025-09-27T23:33:01.808Z"
+        }
+      ],
+      "tags": [
+        "ethereum",
+        "proof-of-stake",
+        "energy",
+        "environment"
+      ],
+      "walrusBlobId": "mock-1759015981808-wrbm8cqfz"
+    },
+    {
+      "id": 2,
+      "title": "World Chain processes over 1M transactions daily",
+      "summary": "World Chain, the Layer 2 solution by Worldcoin, has reached significant adoption with over 1 million daily transactions.",
+      "author": "blockchain-analyst",
+      "status": "review",
+      "votes": 312,
+      "comments": 45,
+      "updated": "6h ago",
+      "sources": [
+        {
+          "url": "https://worldchain.org/stats",
+          "title": "World Chain Statistics",
+          "accessedAt": "2025-09-27T23:33:01.808Z"
+        }
+      ],
+      "tags": [
+        "worldchain",
+        "layer2",
+        "scaling",
+        "adoption"
+      ],
+      "walrusBlobId": "mock-1759015981809-8rrv84q4m"
+    },
+    {
+      "id": 3,
+      "title": "Walrus storage network achieves 99.9% availability",
+      "summary": "The decentralized Walrus storage network demonstrates high reliability with 99.9% uptime across distributed nodes.",
+      "author": "storage-expert",
+      "status": "verified",
+      "votes": 856,
+      "comments": 67,
+      "updated": "1d ago",
+      "sources": [
+        {
+          "url": "https://docs.walrus.space/reliability",
+          "title": "Walrus Network Reliability",
+          "accessedAt": "2025-09-27T23:33:01.808Z"
+        }
+      ],
+      "tags": [
+        "walrus",
+        "storage",
+        "decentralized",
+        "reliability"
+      ],
+      "walrusBlobId": "mock-1759015981809-u6e0ltn6l"
+    }
+  ],
+  "lastUpdated": "2025-09-27T23:33:01.809Z",
+  "source": "walrus-populated"
+}

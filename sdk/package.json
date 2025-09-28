@@ -1,7 +1,7 @@
 {
-  "name": "nocap-sdk",
-  "version": "1.0.0",
-  "description": "Official SDK for accessing verified facts from the NOCAP database built on Walrus",
+  "name": "walrus-data-sdk",
+  "version": "2.0.0",
+  "description": "Generic TypeScript SDK for querying and indexing structured data stored on the Walrus decentralized storage network",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -21,31 +21,35 @@
     "prepublishOnly": "npm run build"
   },
   "keywords": [
-    "nocap",
-    "fact-checking",
     "walrus",
-    "decentralized",
+    "decentralized-storage",
     "blockchain",
-    "verification",
-    "facts",
+    "data-indexing",
+    "query-engine",
+    "sui",
     "sdk",
-    "typescript"
+    "typescript",
+    "o1-queries",
+    "caching"
   ],
-  "author": "NOCAP Team",
+  "author": "Walrus Data SDK Team",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nocap-org/sdk.git"
+    "url": "git+https://github.com/walrus-data/sdk.git"
   },
   "bugs": {
-    "url": "https://github.com/nocap-org/sdk/issues"
+    "url": "https://github.com/walrus-data/sdk/issues"
   },
-  "homepage": "https://nocap.app",
+  "homepage": "https://github.com/walrus-data/sdk",
   "engines": {
     "node": ">=16.0.0"
   },
   "peerDependencies": {
     "typescript": "^4.9.0 || ^5.0.0"
+  },
+  "dependencies": {
+    "@mysten/walrus": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
